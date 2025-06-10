@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "private": true,
-  "homepage": "https://mcarbono3.github.io/wind-analysis",
+  "homepage": "https://mcarbono3.github.io/wind-analysis/frontend",
   "version": "0.0.0",
   "type": "module",
   "scripts": {
