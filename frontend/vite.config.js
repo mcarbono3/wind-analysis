@@ -5,7 +5,7 @@ import path from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/wind-analysis/',
+  base: '/wind-analysis/frontend/',
   plugins: [react(),tailwindcss()],
   resolve: {
     alias: {
