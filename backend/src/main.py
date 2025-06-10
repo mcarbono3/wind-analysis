@@ -14,7 +14,7 @@ app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'sta
 app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
 
 # Habilitar CORS para todas las rutas
-CORS(app, resources={r"/*": {"origins": "https://mcarbono3.github.io/wind-analysis"}})
+CORS(app, resources={r"/*": {"origins":"https://mcarbono3.github.io/wind-analysis"}})
 
 from src.routes.ai import ai_bp
 from src.routes.export import export_bp
