@@ -1,25 +1,41 @@
-import os
-import sys
-# DON'T CHANGE THIS !!!
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, request, make_response
 from flask_cors import CORS
 from src.models.user import db
 from src.routes.user import user_bp
 from src.routes.era5 import era5_bp
 from src.routes.analysis import analysis_bp
+from src.routes.ai import ai_bp
+from src.routes.export import export_bp
+import os
+import sys
+
+# DON\'T CHANGE THIS !!!
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
 
-# Habilitar CORS para todas las rutas
-CORS(app, resources={r"/*": {"origins":"https://mcarbono3.github.io/wind-analysis"}})
+# Habilitar CORS para todas las rutas y orígenes (temporalmente para depuración)
+# CORS(app, resources={r"/*": {"origins":"https://mcarbono3.github.io/wind-analysis"}} )
 
-from src.routes.ai import ai_bp
-from src.routes.export import export_bp
+@app.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        res = make_response()
+        res.headers["Access-Control-Allow-Origin"] = "https://mcarbono3.github.io/wind-analysis"
+        res.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+        res.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+        res.headers["Access-Control-Max-Age"] = "86400"
+        return res
 
-app.register_blueprint(user_bp, url_prefix='/api')
+@app.after_request
+def add_cors_headers(response ):
+    response.headers["Access-Control-Allow-Origin"] = "https://mcarbono3.github.io/wind-analysis"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    return response
+
+app.register_blueprint(user_bp, url_prefix='/api' )
 app.register_blueprint(era5_bp, url_prefix='/api')
 app.register_blueprint(analysis_bp, url_prefix='/api')
 app.register_blueprint(ai_bp, url_prefix='/api')
@@ -29,6 +45,7 @@ app.register_blueprint(export_bp, url_prefix='/api')
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(os.path.dirname(__file__), 'database', 'app.db')}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
+
 with app.app_context():
     db.create_all()
 
@@ -37,7 +54,7 @@ with app.app_context():
 def serve(path):
     static_folder_path = app.static_folder
     if static_folder_path is None:
-            return "Static folder not configured", 404
+        return "Static folder not configured", 404
 
     if path != "" and os.path.exists(os.path.join(static_folder_path, path)):
         return send_from_directory(static_folder_path, path)
@@ -48,7 +65,8 @@ def serve(path):
         else:
             return "index.html not found", 404
 
+# Cambiar app.run() por una configuración para Gunicorn
+# if __name__ == '__main__':
+#     app.run(host='0.0.0.0', port=5000, debug=True)
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
 
