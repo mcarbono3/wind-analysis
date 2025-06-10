@@ -14,7 +14,7 @@ import 'leaflet/dist/leaflet.css';
 import './App.css';
 
 // Configuración de la API
-const API_BASE_URL = '/api';
+const API_BASE_URL = 'https://wind-analysis.onrender.com/api';
 
 // Componente para manejar la selección en el mapa
 function MapSelector({ onAreaSelect, selectedArea, isSelecting, setIsSelecting }) {
