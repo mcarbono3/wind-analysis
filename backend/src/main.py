@@ -65,6 +65,12 @@ def serve(path):
         else:
             return "index.html not found", 404
 
+# Configurar cliente de cdsapi usando variables de entorno (sin usar .cdsapirc)
+import cdsapi
+cdsapi_url = os.getenv('CDSAPI_URL')
+cdsapi_key = os.getenv('CDSAPI_KEY')
+cds_client = cdsapi.Client(url=cdsapi_url, key=cdsapi_key)
+
 # Cambiar app.run() por una configuración para Gunicorn
 # if __name__ == '__main__':
 #     app.run(host='0.0.0.0', port=5000, debug=True)
