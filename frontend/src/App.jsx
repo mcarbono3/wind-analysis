@@ -16,19 +16,6 @@ import './App.css';
 // Configuración de la API
 const API_BASE_URL = 'https://wind-analysis.onrender.com/api';
 
-// Codigo de prueba para forzar la comunicación
-function App() {
-  useEffect(() => {
-    fetch(`${API_BASE_URL}/users`)
-      .then(response => response.json())
-      .then(data => console.log("Usuarios obtenidos:", data))
-      .catch(error => console.error("Error al obtener usuarios:", error));
-  }, []);
-
-  return <h1>Prueba de integración frontend-backend</h1>;
-}
-export default App;
-
 // Componente para manejar la selección en el mapa
 function MapSelector({ onAreaSelect, selectedArea, isSelecting, setIsSelecting }) {
   const [startPoint, setStartPoint] = useState(null);
