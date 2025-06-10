@@ -9,8 +9,8 @@ from src.routes.export import export_bp
 import os
 import sys
 
-# DON\'T CHANGE THIS !!!
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+# DON\"T CHANGE THIS !!!
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__ )))
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
