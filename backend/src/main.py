@@ -9,8 +9,8 @@ from src.routes.export import export_bp
 import os
 import sys
 
-# DON\"T CHANGE THIS !!!
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__ )))
+# DON\'T CHANGE THIS !!!
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
@@ -64,12 +64,6 @@ def serve(path):
             return send_from_directory(static_folder_path, 'index.html')
         else:
             return "index.html not found", 404
-
-# Configurar cliente de cdsapi usando variables de entorno (sin usar .cdsapirc)
-import cdsapi
-cdsapi_url = os.getenv('CDSAPI_URL')
-cdsapi_key = os.getenv('CDSAPI_KEY')
-cds_client = cdsapi.Client(url=cdsapi_url, key=cdsapi_key)
 
 # Cambiar app.run() por una configuración para Gunicorn
 # if __name__ == '__main__':
