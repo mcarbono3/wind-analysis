@@ -22,7 +22,7 @@ app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
 def handle_preflight():
     if request.method == "OPTIONS":
         res = make_response()
-        res.headers["Access-Control-Allow-Origin"] = "https://mcarbono3.github.io/wind-analysis"
+        res.headers["Access-Control-Allow-Origin"] = "https://mcarbono3.github.io"
         res.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
         res.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
         res.headers["Access-Control-Max-Age"] = "86400"
@@ -30,7 +30,7 @@ def handle_preflight():
 
 @app.after_request
 def add_cors_headers(response ):
-    response.headers["Access-Control-Allow-Origin"] = "https://mcarbono3.github.io/wind-analysis"
+    response.headers["Access-Control-Allow-Origin"] = "https://mcarbono3.github.io"
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
     return response
@@ -68,5 +68,4 @@ def serve(path):
 # Cambiar app.run() por una configuración para Gunicorn
 # if __name__ == '__main__':
 #     app.run(host='0.0.0.0', port=5000, debug=True)
-
 
