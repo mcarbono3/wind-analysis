@@ -410,7 +410,7 @@ function App() {
                     <MapSelector
                       onAreaSelect={handleAreaSelect}
                       selectedArea={selectedArea}
-                      isSelecting={isMapSelecting} // Pasar el estado al MapSelector
+                      isSelecting={isMapSelecting} // Sección modificada
                       setIsSelecting={setIsMapSelecting} // Pasar la función para actualizar el estado
                     />
                   </MapContainer>
@@ -701,7 +701,6 @@ function App() {
 }
 
 export default App;
-
 
 
 
