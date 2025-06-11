@@ -110,7 +110,19 @@ function App() {
     startDate: '2024-01-01',
     endDate: '2024-01-07'
   });
-  const [analysisData, setAnalysisData] = useState(null);
+  const [analysisData, setAnalysisData] = useState({
+    analysis: {},
+    location: {},
+    era5Data: {
+      wind_speed_10m: [],
+      wind_speed_100m: [],
+      wind_direction_10m: [],
+      wind_direction_100m: [],
+      surface_pressure: [],
+      temperature_2m: [],
+      timestamps: []
+    }
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('map');
@@ -153,6 +165,16 @@ function App() {
     if (!selectedArea) {
       setError('Por favor selecciona un área en el mapa');
       console.log('Error: No area selected.');
+      return;
+    }
+
+    // Validar que el área seleccionada tenga dimensiones mínimas
+    const latDiff = Math.abs(selectedArea[1][0] - selectedArea[0][0]);
+    const lonDiff = Math.abs(selectedArea[1][1] - selectedArea[0][1]);
+    
+    if (latDiff < 0.01 || lonDiff < 0.01) {
+      setError('El área seleccionada es demasiado pequeña. Por favor selecciona un área más grande.');
+      console.log('Error: Selected area is too small.');
       return;
     }
 
@@ -203,6 +225,11 @@ function App() {
 
       const era5Data = era5Response.data.data;
 
+      // Validar que los datos de ERA5 tengan la estructura esperada
+      if (!era5Data.wind_speed_10m || !Array.isArray(era5Data.wind_speed_10m) || era5Data.wind_speed_10m.length === 0) {
+        throw new Error('Los datos de viento recibidos no tienen el formato esperado');
+      }
+
       // 2. Realizar el análisis de viento con los datos de ERA5
       console.log('Sending ERA5 data to wind analysis endpoint with parameters:', {
         wind_speeds: era5Data.wind_speed_10m.flat(), // Asumiendo que queremos 10m para el análisis principal
@@ -215,8 +242,22 @@ function App() {
 
       console.log('Analysis Response received:', analysisResponse.data);
 
-      setAnalysisData({
-        ...analysisResponse.data.analysis,
+      // Validar la respuesta del análisis
+      if (!analysisResponse.data || !analysisResponse.data.analysis) {
+        throw new Error('La respuesta del análisis no tiene el formato esperado');
+      }
+
+      const analysisResult = analysisResponse.data.analysis || {};
+      setAnalysisData(prevData => ({
+        ...prevData,
+        analysis: {
+          ...analysisResult,
+          wind_speed_distribution: analysisResult.wind_speed_distribution || [],
+          wind_rose_data: analysisResult.wind_rose_data || [],
+          time_series: analysisResult.time_series || [],
+          statistics: analysisResult.statistics || {},
+          viability: analysisResult.viability || {},
+        },
         location: {
           bounds: selectedArea,
           center: [
@@ -224,8 +265,17 @@ function App() {
             (selectedArea[0][1] + selectedArea[1][1]) / 2
           ]
         },
-        era5Data: era5Data
-      });
+        era5Data: {
+          ...era5Data,
+          wind_speed_10m: era5Data.wind_speed_10m || [],
+          wind_speed_100m: era5Data.wind_speed_100m || [],
+          wind_direction_10m: era5Data.wind_direction_10m || [],
+          wind_direction_100m: era5Data.wind_direction_100m || [],
+          surface_pressure: era5Data.surface_pressure || [],
+          temperature_2m: era5Data.temperature_2m || [],
+          timestamps: era5Data.timestamps || []
+        }
+      }));
 
       setActiveTab('results');
       console.log('Analysis completed successfully. Navigating to results tab.');
@@ -651,6 +701,10 @@ function App() {
 }
 
 export default App;
+
+
+
+
 
 
 
