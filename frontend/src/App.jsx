@@ -1,49 +1,49 @@
-import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Rectangle, useMapEvents, useMap } from 'react-leaflet';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Wind, MapPin, Calendar, Download, BarChart3, TrendingUp, XCircle } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
-import axios from 'axios';
-import 'leaflet/dist/leaflet.css';
-import './App.css';
+import React, { useState, useEffect } from 'react'
+import { MapContainer, TileLayer, Rectangle, useMapEvents, useMap } from 'react-leaflet'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Badge } from '@/components/ui/badge'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Wind, MapPin, Calendar, Download, BarChart3, TrendingUp, XCircle } from 'lucide-react'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts'
+import axios from 'axios'
+import 'leaflet/dist/leaflet.css'
+import './App.css'
 
 // Configuración de la API
-const API_BASE_URL = 'https://wind-analysis.onrender.com/api';
+const API_BASE_URL = 'https://wind-analysis.onrender.com/api'
 
 // Componente para manejar la selección en el mapa
 function MapSelector({ onAreaSelect, selectedArea, isSelecting, setIsSelecting }) {
-  const [startPoint, setStartPoint] = useState(null);
-  const [currentBounds, setCurrentBounds] = useState(null); // Para mostrar el rectángulo mientras se arrastra
-  const map = useMap();
+  const [startPoint, setStartPoint] = useState(null)
+  const [currentBounds, setCurrentBounds] = useState(null) // Para mostrar el rectángulo mientras se arrastra
+  const map = useMap()
 
   useEffect(() => {
-    console.log('MapSelector useEffect - isSelecting:', isSelecting);
+    console.log('MapSelector useEffect - isSelecting:', isSelecting)
     if (isSelecting) {
-      console.log('MapSelector: Disabling map interactions');
-      map.dragging.disable();
-      map.doubleClickZoom.disable();
-      map.scrollWheelZoom.disable();
+      console.log('MapSelector: Disabling map interactions')
+      map.dragging.disable()
+      map.doubleClickZoom.disable()
+      map.scrollWheelZoom.disable()
     } else {
-      console.log('MapSelector: Enabling map interactions');
-      map.dragging.enable();
-      map.doubleClickZoom.enable();
-      map.scrollWheelZoom.enable();
+      console.log('MapSelector: Enabling map interactions')
+      map.dragging.enable()
+      map.doubleClickZoom.enable()
+      map.scrollWheelZoom.enable()
     }
-  }, [isSelecting, map]);
+  }, [isSelecting, map])
 
   useMapEvents({
     mousedown: (e) => {
-      console.log('MapSelector mousedown event:', e.latlng, 'isSelecting:', isSelecting);
+      console.log('MapSelector mousedown event:', e.latlng, 'isSelecting:', isSelecting)
       if (isSelecting) {
-        setStartPoint([e.latlng.lat, e.latlng.lng]);
-        setCurrentBounds([[e.latlng.lat, e.latlng.lng], [e.latlng.lat, e.latlng.lng]]);
-        console.log('MapSelector: Selection started at', e.latlng);
+        setStartPoint([e.latlng.lat, e.latlng.lng])
+        setCurrentBounds([[e.latlng.lat, e.latlng.lng], [e.latlng.lat, e.latlng.lng]])
+        console.log('MapSelector: Selection started at', e.latlng)
       }
     },
     mousemove: (e) => {
@@ -51,604 +51,416 @@ function MapSelector({ onAreaSelect, selectedArea, isSelecting, setIsSelecting }
         const newBounds = [
           [Math.min(startPoint[0], e.latlng.lat), Math.min(startPoint[1], e.latlng.lng)],
           [Math.max(startPoint[0], e.latlng.lat), Math.max(startPoint[1], e.latlng.lng)]
-        ];
-        setCurrentBounds(newBounds);
-        console.log('MapSelector: Drawing rectangle to', e.latlng);
+        ]
+        setCurrentBounds(newBounds)
+        console.log('MapSelector: Drawing rectangle to', e.latlng)
       }
     },
     mouseup: (e) => {
-      console.log('MapSelector mouseup event:', e.latlng, 'isSelecting:', isSelecting, 'startPoint:', startPoint);
+      console.log('MapSelector mouseup event:', e.latlng, 'isSelecting:', isSelecting, 'startPoint:', startPoint)
       if (isSelecting && startPoint) {
-        const endPoint = [e.latlng.lat, e.latlng.lng];
+        const endPoint = [e.latlng.lat, e.latlng.lng]
         const bounds = [
           [Math.min(startPoint[0], endPoint[0]), Math.min(startPoint[1], endPoint[1])],
           [Math.max(startPoint[0], endPoint[0]), Math.max(startPoint[1], endPoint[1])]
-        ];
-        console.log('MapSelector - Selected bounds:', bounds);
-        onAreaSelect(bounds);
-        setIsSelecting(false);
-        setStartPoint(null);
-        setCurrentBounds(null);
-        console.log('MapSelector: Selection finished, isSelecting set to false');
+        ]
+        onAreaSelect(bounds)
+        setIsSelecting(false)
+        setStartPoint(null)
+        setCurrentBounds(null)
+        console.log('MapSelector: Selection finished, bounds:', bounds)
       }
     },
-    click: (e) => {
-      console.log('MapSelector click event:', e.latlng, 'isSelecting:', isSelecting, 'startPoint:', startPoint);
-      if (isSelecting && !startPoint) { // Si no hay un arrastre, es un clic de punto
-        const point = [e.latlng.lat, e.latlng.lng];
-        const bounds = [[point[0] - 0.01, point[1] - 0.01], [point[0] + 0.01, point[1] + 0.01]]; // Pequeña área alrededor del punto
-        console.log('MapSelector - Selected point bounds:', bounds);
-        onAreaSelect(bounds);
-        setIsSelecting(false);
-        console.log('MapSelector: Point selection finished, isSelecting set to false');
-      }
-    }
-  });
+  })
 
   return (
     <>
-      {selectedArea && (
-        <Rectangle
-          bounds={selectedArea}
-          pathOptions={{ color: 'blue', fillOpacity: 0.2 }}
-        />
+      {currentBounds && (
+        <Rectangle bounds={currentBounds} pathOptions={{ color: 'blue', weight: 2, fillOpacity: 0.2 }} />
       )}
-      {currentBounds && isSelecting && (
-        <Rectangle
-          bounds={currentBounds}
-          pathOptions={{ color: 'red', fillOpacity: 0.5, weight: 2 }}
-        />
+      {selectedArea && !isSelecting && (
+        <Rectangle bounds={selectedArea} pathOptions={{ color: 'green', weight: 2, fillOpacity: 0.2 }} />
       )}
     </>
-  );
+  )
 }
 
-// Componente principal
 function App() {
-  const [selectedArea, setSelectedArea] = useState(null);
-  const [dateRange, setDateRange] = useState({
-    startDate: '2024-01-01',
-    endDate: '2024-01-07'
-  });
-  const [analysisData, setAnalysisData] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('map');
-  const [isMapSelecting, setIsMapSelecting] = useState(false); // Nuevo estado para controlar el modo de selección del mapa
+  const [latitude, setLatitude] = useState('')
+  const [longitude, setLongitude] = useState('')
+  const [analysisResult, setAnalysisResult] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [selectedArea, setSelectedArea] = useState(null)
+  const [isSelecting, setIsSelecting] = useState(false)
+  const [activeTab, setActiveTab] = useState('input')
 
-  useEffect(() => {
-    console.log('App useEffect - isMapSelecting changed to:', isMapSelecting);
-  }, [isMapSelecting]);
-
-  useEffect(() => {
-    console.log('App useEffect - selectedArea changed to:', selectedArea);
-  }, [selectedArea]);
-
-  // Coordenadas del Caribe colombiano
-  const caribbeanBounds = {
-    lat_min: 8.0,
-    lat_max: 16.0,
-    lon_min: -82.0,
-    lon_max: -70.0,
-    center: { lat: 12.0, lon: -76.0 }
-  };
-
-  const handleAreaSelect = (bounds) => {
-    console.log('App - handleAreaSelect called with bounds:', bounds);
-    setSelectedArea(bounds);
-    setError(null);
-    setIsMapSelecting(false); // Desactivar el modo de selección después de seleccionar un área
-    console.log('App - handleAreaSelect: isMapSelecting set to false');
-  };
-
-  const handleClearSelection = () => {
-    console.log('App - handleClearSelection called');
-    setSelectedArea(null);
-    setIsMapSelecting(false);
-    setError(null);
-  };
-
-  const handleAnalysis = async () => {
-    console.log('App - handleAnalysis called. selectedArea:', selectedArea);
-    if (!selectedArea) {
-      setError('Por favor selecciona un área en el mapa');
-      console.log('Error: No area selected.');
-      return;
+  const handleAnalyze = async () => {
+    if (!latitude || !longitude) {
+      setError('Por favor, introduce la latitud y la longitud.')
+      return
     }
 
-    setLoading(true);
-    setError(null);
-    console.log('Starting analysis...');
+    setLoading(true)
+    setError(null)
+    setAnalysisResult(null)
 
     try {
-      // 1. Obtener datos de ERA5 del backend
-      console.log('Requesting ERA5 data from backend with parameters:', {
-        lat_min: selectedArea[0][0],
-        lat_max: selectedArea[1][0],
-        lon_min: selectedArea[0][1],
-        lon_max: selectedArea[1][1],
-        start_date: dateRange.startDate,
-        end_date: dateRange.endDate,
-        variables: [
-          '10m_u_component_of_wind',
-          '10m_v_component_of_wind',
-          '100m_u_component_of_wind',
-          '100m_v_component_of_wind',
-          'surface_pressure',
-          '2m_temperature'
-        ]
-      });
-      const era5Response = await axios.post(`${API_BASE_URL}/wind-data`, {
-        lat_min: selectedArea[0][0],
-        lat_max: selectedArea[1][0],
-        lon_min: selectedArea[0][1],
-        lon_max: selectedArea[1][1],
-        start_date: dateRange.startDate,
-        end_date: dateRange.endDate,
-        variables: [
-          '10m_u_component_of_wind',
-          '10m_v_component_of_wind',
-          '100m_u_component_of_wind',
-          '100m_v_component_of_wind',
-          'surface_pressure',
-          '2m_temperature'
-        ]
-      });
-
-      console.log('ERA5 Data received:', era5Response.data);
-
-      if (era5Response.data.status !== 'success' || !era5Response.data.data) {
-        throw new Error(era5Response.data.message || 'Error al obtener datos de ERA5');
+      const response = await axios.post(`${API_BASE_URL}/analyze`, {
+        latitude: parseFloat(latitude),
+        longitude: parseFloat(longitude),
+      })
+      console.log('API Response:', response.data)
+      if (response.data.status === 'success') {
+        setAnalysisResult(response.data.analysis)
+        setActiveTab('results')
+      } else {
+        setError(response.data.message || 'Error desconocido al analizar los datos.')
       }
-
-      const era5Data = era5Response.data.data;
-
-      // 2. Realizar el análisis de viento con los datos de ERA5
-      console.log('Sending ERA5 data to wind analysis endpoint with parameters:', {
-        wind_speeds: era5Data.wind_speed_10m.flat(), // Asumiendo que queremos 10m para el análisis principal
-        air_density: 1.225 // Valor promedio, se podría obtener de ERA5 también
-      });
-      const analysisResponse = await axios.post(`${API_BASE_URL}/wind-analysis`, {
-        wind_speeds: era5Data.wind_speed_10m.flat(), // Asumiendo que queremos 10m para el análisis principal
-        air_density: 1.225 // Valor promedio, se podría obtener de ERA5 también
-      });
-
-      console.log('Analysis Response received:', analysisResponse.data);
-
-      setAnalysisData({
-        ...analysisResponse.data.analysis,
-        location: {
-          bounds: selectedArea,
-          center: [
-            (selectedArea[0][0] + selectedArea[1][0]) / 2,
-            (selectedArea[0][1] + selectedArea[1][1]) / 2
-          ]
-        },
-        era5Data: era5Data
-      });
-
-      setActiveTab('results');
-      console.log('Analysis completed successfully. Navigating to results tab.');
     } catch (err) {
-      console.error('Error during analysis request:', err);
-      setError('Error al realizar el análisis: ' + (err.response?.data?.error || err.message));
-      console.log('Analysis failed. Error:', err.message);
+      console.error('Error al realizar la solicitud:', err)
+      setError('Error al conectar con el servidor o al procesar la solicitud.')
     } finally {
-      setLoading(false);
-      console.log('Analysis process finished. Loading set to false.');
+      setLoading(false)
     }
-  };
+  }
 
-  const generateMockWindData = () => {
-    // Generar datos de viento simulados para demostración
-    const hours = 24 * 7; // Una semana
-    const wind_speeds = [];
-    const wind_directions = [];
-    const timestamps = [];
+  const handleAreaSelect = (bounds) => {
+    setSelectedArea(bounds)
+    setLatitude(bounds[0][0].toFixed(4)) // Latitud del primer punto
+    setLongitude(bounds[0][1].toFixed(4)) // Longitud del primer punto
+    setActiveTab('input') // Volver a la pestaña de entrada para ver las coordenadas
+  }
 
-    for (let i = 0; i < hours; i++) {
-      // Simular variación diurna y aleatoria
-      const baseSpeed = 6 + 2 * Math.sin(i * 2 * Math.PI / 24) + Math.random() * 3;
-      wind_speeds.push(Math.max(0, baseSpeed));
-      wind_directions.push(Math.random() * 360);
-      
-      const date = new Date(dateRange.startDate);
-      date.setHours(date.getHours() + i);
-      timestamps.push(date.toISOString());
+  const handleClearSelection = () => {
+    setSelectedArea(null)
+    setLatitude('')
+    setLongitude('')
+    setIsSelecting(false)
+  }
+
+  const handleStartSelection = () => {
+    setIsSelecting(true)
+    setSelectedArea(null) // Limpiar selección anterior al iniciar una nueva
+  }
+
+  // Preparar datos para el gráfico de evolución del viento a 100m
+  const windEvolutionData = analysisResult?.wind_evolution_100m?.timestamps?.map((timestamp, index) => {
+    const windSpeed = analysisResult?.wind_evolution_100m?.wind_speed_100m?.[index]
+    const windDirection = analysisResult?.wind_evolution_100m?.wind_direction_100m?.[index]
+    return {
+      time: new Date(timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      'Velocidad del Viento (m/s)': windSpeed,
+      'Dirección del Viento (grados)': windDirection,
     }
+  }) || []
 
-    return { wind_speeds, wind_directions, timestamps };
-  };
+  // Preparar datos para el gráfico de rosa de los vientos (histograma de direcciones)
+  const windRoseData = analysisResult?.wind_rose_data?.map(dataPoint => ({
+    direction: dataPoint.direction,
+    frequency: dataPoint.frequency,
+  })) || []
 
-  const getViabilityColor = (level) => {
-    if (!level) return 'bg-gray-500';
-    
-    const normalizedLevel = level.toLowerCase();
-    switch (normalizedLevel) {
-      case 'alto':
-      case 'alta':
-      case 'high': 
-        return 'bg-green-500';
-      case 'moderado':
-      case 'moderada':
-      case 'medium':
-      case 'moderate': 
-        return 'bg-yellow-500';
-      case 'bajo':
-      case 'baja':
-      case 'low': 
-        return 'bg-red-500';
-      default: 
-        return 'bg-gray-500';
-    }
-  };
+  // Preparar datos para el gráfico de velocidad del viento por altura
+  const windSpeedByHeightData = analysisResult?.wind_speed_by_height?.map(dataPoint => ({
+    height: dataPoint.height,
+    speed: dataPoint.speed,
+  })) || []
 
-  const getViabilityIcon = (message) => {
-    if (!message) return '❓';
-    
-    const normalizedMessage = message.toLowerCase();
-    if (normalizedMessage.includes('✅') || normalizedMessage.includes('viable') || normalizedMessage.includes('recomendado')) return '✅';
-    if (normalizedMessage.includes('⚠️') || normalizedMessage.includes('moderado') || normalizedMessage.includes('precaución')) return '⚠️';
-    if (normalizedMessage.includes('❌') || normalizedMessage.includes('no viable') || normalizedMessage.includes('no recomendado')) return '❌';
-    return '📊';
-  };
+  // Preparar datos para el gráfico de distribución de Weibull
+  const weibullData = analysisResult?.weibull_distribution?.bins?.map((bin, index) => ({
+    speed: bin,
+    frequency: analysisResult?.weibull_distribution?.frequencies?.[index],
+  })) || []
+
+  // Preparar datos para el gráfico de densidad de potencia
+  const powerDensityData = analysisResult?.power_density_distribution?.bins?.map((bin, index) => ({
+    speed: bin,
+    density: analysisResult?.power_density_distribution?.densities?.[index],
+  })) || []
+
+  // Preparar datos para el gráfico de frecuencia de velocidad del viento
+  const windSpeedFrequencyData = analysisResult?.wind_speed_frequency?.bins?.map((bin, index) => ({
+    speed: bin,
+    frequency: analysisResult?.wind_speed_frequency?.frequencies?.[index],
+  })) || []
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-3">
-              <Wind className="h-8 w-8 text-blue-600" />
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  Análisis Eólico Caribe
-                </h1>
-                <p className="text-sm text-gray-600">
-                  Evaluación del potencial eólico en Colombia
-                </p>
-              </div>
-            </div>
-            <Badge variant="outline" className="text-blue-600">
-              Powered by ERA5
-            </Badge>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="map" className="flex items-center space-x-2">
-              <MapPin className="h-4 w-4" />
-              <span>Selección de Área</span>
-            </TabsTrigger>
-            <TabsTrigger value="analysis" className="flex items-center space-x-2">
-              <BarChart3 className="h-4 w-4" />
-              <span>Configuración</span>
-            </TabsTrigger>
-            <TabsTrigger value="results" className="flex items-center space-x-2">
-              <TrendingUp className="h-4 w-4" />
-              <span>Resultados</span>
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Tab: Mapa */}
-          <TabsContent value="map" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <MapPin className="h-5 w-5" />
-                  <span>Seleccionar Área de Análisis</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-96 rounded-lg overflow-hidden border">
-                  <MapContainer
-                    center={[caribbeanBounds.center.lat, caribbeanBounds.center.lon]}
-                    zoom={7}
-                    style={{ height: '100%', width: '100%' }}
-                    dragging={!isMapSelecting} // Controlar el arrastre del mapa con el estado isMapSelecting
-                    className={isMapSelecting ? 'cursor-crosshair' : 'cursor-grab'}
-                  >
-                    <TileLayer
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    />
-                    <MapSelector
-                      onAreaSelect={handleAreaSelect}
-                      selectedArea={selectedArea}
-                      isSelecting={isMapSelecting} // Pasar el estado al MapSelector
-                      setIsSelecting={setIsMapSelecting} // Pasar la función para actualizar el estado
-                    />
-                  </MapContainer>
-                </div>
-                <div className="mt-4 flex justify-between items-center">
-                  <p className="text-sm text-gray-600">
-                    {isMapSelecting ? 'Haz clic y arrastra para seleccionar un área' : 'Haz clic en "Iniciar Selección" para dibujar un área'}
-                  </p>
-                  <div className="flex space-x-2">
-                    <Button 
-                      onClick={() => {
-                        console.log('App - Iniciar Selección button clicked. Current isMapSelecting:', isMapSelecting);
-                        setIsMapSelecting(true);
-                      }} 
-                      disabled={isMapSelecting}
-                    >
-                      {isMapSelecting ? 'Seleccionando...' : 'Iniciar Selección'}
-                    </Button>
-                    {selectedArea && (
-                      <Button 
-                        onClick={handleClearSelection} 
-                        variant="outline"
-                        size="icon"
-                      >
-                        <XCircle className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                  {selectedArea && (
-                    <Badge variant="secondary">
-                      Área seleccionada: {selectedArea[0][0].toFixed(2)}°, {selectedArea[0][1].toFixed(2)}° a {selectedArea[1][0].toFixed(2)}°, {selectedArea[1][1].toFixed(2)}°
-                    </Badge>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Tab: Configuración */}
-          <TabsContent value="analysis" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Calendar className="h-5 w-5" />
-                    <span>Rango de Fechas</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="startDate">Fecha de Inicio</Label>
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
+      <Card className="w-full max-w-4xl shadow-lg">
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold text-center">Análisis de Potencial Eólico</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="input">Entrada de Datos</TabsTrigger>
+              <TabsTrigger value="results">Resultados del Análisis</TabsTrigger>
+            </TabsList>
+            <TabsContent value="input" className="p-4">
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="latitude">Latitud</Label>
                     <Input
-                      id="startDate"
-                      type="date"
-                      value={dateRange.startDate}
-                      onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                      id="latitude"
+                      type="number"
+                      placeholder="Ej: 40.7128"
+                      value={latitude}
+                      onChange={(e) => setLatitude(e.target.value)}
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="endDate">Fecha de Fin</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="longitude">Longitud</Label>
                     <Input
-                      id="endDate"
-                      type="date"
-                      value={dateRange.endDate}
-                      onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                      id="longitude"
+                      type="number"
+                      placeholder="Ej: -74.0060"
+                      value={longitude}
+                      onChange={(e) => setLongitude(e.target.value)}
                     />
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Variables de Análisis</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex items-center space-x-2">
-                      <input type="checkbox" id="wind_speed" defaultChecked />
-                      <Label htmlFor="wind_speed">Velocidad del viento (10m, 100m)</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <input type="checkbox" id="pressure" defaultChecked />
-                      <Label htmlFor="pressure">Presión Atmosférica</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <input type="checkbox" id="temperature" defaultChecked />
-                      <Label htmlFor="temperature">Temperatura</Label>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <BarChart3 className="h-5 w-5" />
-                  <span>Iniciar Análisis</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+                </div>
+                <Button onClick={handleAnalyze} className="w-full" disabled={loading}>
+                  {loading ? 'Analizando...' : 'Analizar Datos'}
+                </Button>
                 {error && (
-                  <Alert variant="destructive" className="mb-4">
+                  <Alert variant="destructive">
+                    <XCircle className="h-4 w-4" />
                     <AlertDescription>{error}</AlertDescription>
                   </Alert>
                 )}
-                <Button 
-                  onClick={handleAnalysis} 
-                  className="w-full" 
-                  disabled={loading || !selectedArea}
-                >
-                  {loading ? 'Analizando...' : 'Iniciar Análisis Eólico'}
-                </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Tab: Resultados */}
-          <TabsContent value="results" className="space-y-6">
-            {analysisData ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Resumen del Análisis */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <TrendingUp className="h-5 w-5" />
-                      <span>Resumen del Análisis</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <p><strong>Área Analizada:</strong> {analysisData?.location?.bounds?.[0]?.[0]?.toFixed(2) || 'N/A'}°, {analysisData?.location?.bounds?.[0]?.[1]?.toFixed(2) || 'N/A'}° a {analysisData?.location?.bounds?.[1]?.[0]?.toFixed(2) || 'N/A'}°, {analysisData?.location?.bounds?.[1]?.[1]?.toFixed(2) || 'N/A'}°</p>
-                    <p><strong>Fecha de Inicio:</strong> {dateRange?.startDate || 'N/A'}</p>
-                    <p><strong>Fecha de Fin:</strong> {dateRange?.endDate || 'N/A'}</p>
-                    {analysisData?.viability_level ? (
-                      <div className={`p-3 rounded-md ${getViabilityColor(analysisData.viability_level)} text-white flex items-center space-x-2`}>
-                        <span className="text-2xl">{getViabilityIcon(analysisData.recommendation)}</span>
-                        <p className="font-bold">{analysisData.recommendation || 'Sin recomendación disponible'}</p>
-                      </div>
-                    ) : (
-                      <div className="p-3 rounded-md bg-gray-500 text-white flex items-center space-x-2">
-                        <span className="text-2xl">❓</span>
-                        <p className="font-bold">Datos de viabilidad no disponibles</p>
-                      </div>
-                    )}
-                    <p className="text-sm text-gray-700"><strong>Velocidad Promedio del Viento:</strong> {analysisData?.avg_wind_speed?.toFixed(2) || 'N/A'} m/s</p>
-                    <p className="text-sm text-gray-700"><strong>Nivel de Viabilidad:</strong> {analysisData?.viability_level || 'No disponible'}</p>
-                  </CardContent>
-                </Card>
-
-                {/* Estadísticas Principales */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Estadísticas Principales</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <p><strong>Velocidad Media del Viento (10m):</strong> {analysisData.mean_wind_speed_10m?.toFixed(2) || 'N/A'} m/s</p>
-                    <p><strong>Velocidad Media del Viento (100m):</strong> {analysisData.mean_wind_speed_100m?.toFixed(2) || 'N/A'} m/s</p>
-                    <p><strong>Densidad de Potencia (100m):</strong> {analysisData.power_density_100m?.toFixed(2) || 'N/A'} W/m²</p>
-                    <p><strong>Factor de Capacidad (100m):</strong> {(analysisData.capacity_factor_100m * 100)?.toFixed(2) || 'N/A'}%</p>
-                    <p><strong>Probabilidad de Vientos &gt; 8 m/s (100m):</strong> {(analysisData.probability_gt_8ms_100m * 100)?.toFixed(2) || 'N/A'}%</p>
-                    <p><strong>Parámetro k de Weibull (100m):</strong> {analysisData.weibull_k_100m?.toFixed(2) || 'N/A'}</p>
-                    <p><strong>Parámetro c de Weibull (100m):</strong> {analysisData.weibull_c_100m?.toFixed(2) || 'N/A'} m/s</p>
-                  </CardContent>
-                </Card>
-
-                {/* Histograma de Velocidad del Viento con Ajuste Weibull */}
-                <Card className="lg:col-span-2">
-                  <CardHeader>
-                    <CardTitle>Histograma de Velocidad del Viento (100m) con Ajuste Weibull</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {analysisData.weibull_histogram_100m && analysisData.weibull_fit_100m ? (
-                      <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={analysisData.weibull_histogram_100m}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="speed_bin" />
-                          <YAxis />
-                          <Tooltip />
-                          <Bar dataKey="frequency" fill="#8884d8" name="Frecuencia" />
-                          <Line type="monotone" dataKey="weibull_fit" stroke="#82ca9d" name="Ajuste Weibull" dot={false} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <p>No hay datos de histograma disponibles.</p>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Evolución Temporal del Viento (100m) */}
-                <Card className="lg:col-span-2">
-                  <CardHeader>
-                    <CardTitle>Evolución Temporal del Viento (100m)</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {analysisData.era5Data?.wind_speed_100m ? (
-                      <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={analysisData.era5Data.wind_speed_100m.map((speed, index) => ({ time: analysisData.era5Data.timestamps[index], speed }))}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="time" tickFormatter={(tick) => new Date(tick).toLocaleDateString()} />
-                          <YAxis />
-                          <Tooltip labelFormatter={(label) => new Date(label).toLocaleString()} />
-                          <Line type="monotone" dataKey="speed" stroke="#8884d8" name="Velocidad del Viento (m/s)" dot={false} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <p>No hay datos de evolución temporal disponibles.</p>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Boxplot Horario de Velocidad del Viento (100m) */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Boxplot Horario de Velocidad del Viento (100m)</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {analysisData.hourly_boxplot_100m ? (
-                      <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={analysisData.hourly_boxplot_100m}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="hour" />
-                          <YAxis />
-                          <Tooltip />
-                          <Bar dataKey="median" fill="#82ca9d" name="Mediana" />
-                          {/* Puedes añadir más barras para cuartiles si los datos lo permiten */}
-                        </BarChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <p>No hay datos de boxplot horario disponibles.</p>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Turbulencia y Otros Gráficos (Placeholder) */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Turbulencia y Otros Gráficos</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p>Gráficos de turbulencia, variación anual de Weibull, etc., se mostrarán aquí.</p>
-                    {analysisData.turbulence_intensity_100m && (
-                      <p><strong>Intensidad de Turbulencia (100m):</strong> {analysisData.turbulence_intensity_100m.toFixed(2)}</p>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Opciones de Exportación */}
-                <Card className="lg:col-span-2">
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <Download className="h-5 w-5" />
-                      <span>Exportar Resultados</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="flex space-x-4">
-                    <Button onClick={() => alert('Funcionalidad de exportar CSV pendiente.')}>
-                      Exportar CSV
-                    </Button>
-                    <Button onClick={() => alert('Funcionalidad de exportar PDF pendiente.')}>
-                      Exportar PDF
-                    </Button>
-                  </CardContent>
-                </Card>
+                <div className="h-[400px] w-full rounded-md overflow-hidden border">
+                  <MapContainer
+                    center={[latitude ? parseFloat(latitude) : 40.7128, longitude ? parseFloat(longitude) : -74.0060]}
+                    zoom={latitude && longitude ? 10 : 2}
+                    scrollWheelZoom={true}
+                    className="h-full w-full"
+                  >
+                    <TileLayer
+                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+                    <MapSelector onAreaSelect={handleAreaSelect} selectedArea={selectedArea} isSelecting={isSelecting} setIsSelecting={setIsSelecting} />
+                  </MapContainer>
+                </div>
+                <div className="flex justify-between space-x-2">
+                  <Button onClick={handleStartSelection} disabled={isSelecting} className="flex-1">
+                    <MapPin className="mr-2 h-4 w-4" /> Seleccionar Área en Mapa
+                  </Button>
+                  <Button onClick={handleClearSelection} variant="outline" className="flex-1">
+                    Limpiar Selección
+                  </Button>
+                </div>
               </div>
-            ) : (
-              <Card>
-                <CardContent className="p-6 text-center text-gray-500">
-                  {loading ? (
-                    <p>Cargando resultados del análisis...</p>
-                  ) : (
-                    <p>Selecciona un área en el mapa y haz clic en "Iniciar Análisis Eólico" para ver los resultados.</p>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-        </Tabs>
-      </main>
+            </TabsContent>
+            <TabsContent value="results" className="p-4 space-y-6">
+              {analysisResult ? (
+                <div className="space-y-6">
+                  <h3 className="text-xl font-semibold">Resultados del Análisis</h3>
 
-      {/* Footer */}
-      <footer className="bg-gray-800 text-white py-4 mt-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm">
-          © {new Date().getFullYear()} Análisis Eólico Caribe. Todos los derechos reservados.
-        </div>
-      </footer>
+                  {/* Sección de Resumen */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center"><TrendingUp className="mr-2 h-5 w-5" /> Resumen General</CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Latitud:</p>
+                        <p className="text-lg">{analysisResult.latitude?.toFixed(4) || 'N/A'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Longitud:</p>
+                        <p className="text-lg">{analysisResult.longitude?.toFixed(4) || 'N/A'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Altura de Referencia (m):</p>
+                        <p className="text-lg">{analysisResult.reference_height_m?.toFixed(2) || 'N/A'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Velocidad Media del Viento (m/s):</p>
+                        <p className="text-lg">{analysisResult.mean_wind_speed_mps?.toFixed(2) || 'N/A'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Densidad de Potencia Eólica (W/m²):</p>
+                        <p className="text-lg">{analysisResult.wind_power_density_wm2?.toFixed(2) || 'N/A'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Clase de Viento:</p>
+                        <p className="text-lg"><Badge>{analysisResult.wind_class || 'N/A'}</Badge></p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Factor de Forma Weibull (k):</p>
+                        <p className="text-lg">{analysisResult.weibull_k?.toFixed(2) || 'N/A'}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Parámetro de Escala Weibull (A m/s):</p>
+                        <p className="text-lg">{analysisResult.weibull_A_mps?.toFixed(2) || 'N/A'}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Gráfico de Evolución del Viento a 100m */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center"><LineChart className="mr-2 h-5 w-5" /> Evolución del Viento a 100m</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {windEvolutionData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={300}>
+                          <LineChart data={windEvolutionData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="time" />
+                            <YAxis />
+                            <Tooltip />
+                            <Line type="monotone" dataKey="Velocidad del Viento (m/s)" stroke="#8884d8" activeDot={{ r: 8 }} />
+                            <Line type="monotone" dataKey="Dirección del Viento (grados)" stroke="#82ca9d" />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <Alert>
+                          <AlertDescription>No hay datos de evolución temporal disponibles.</AlertDescription>
+                        </Alert>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Gráfico de Rosa de los Vientos */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center"><BarChart3 className="mr-2 h-5 w-5" /> Rosa de los Vientos</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {windRoseData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={300}>
+                          <BarChart data={windRoseData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="direction" />
+                            <YAxis />
+                            <Tooltip />
+                            <Bar dataKey="frequency" fill="#8884d8" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <Alert>
+                          <AlertDescription>No hay datos de rosa de los vientos disponibles.</AlertDescription>
+                        </Alert>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Gráfico de Velocidad del Viento por Altura */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center"><TrendingUp className="mr-2 h-5 w-5" /> Velocidad del Viento por Altura</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {windSpeedByHeightData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={300}>
+                          <LineChart data={windSpeedByHeightData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="height" label={{ value: 'Altura (m)', position: 'insideBottom', offset: 0 }} />
+                            <YAxis label={{ value: 'Velocidad (m/s)', angle: -90, position: 'insideLeft' }} />
+                            <Tooltip />
+                            <Line type="monotone" dataKey="speed" stroke="#8884d8" activeDot={{ r: 8 }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <Alert>
+                          <AlertDescription>No hay datos de velocidad del viento por altura disponibles.</AlertDescription>
+                        </Alert>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Gráfico de Distribución de Weibull */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center"><BarChart3 className="mr-2 h-5 w-5" /> Distribución de Weibull</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {weibullData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={300}>
+                          <BarChart data={weibullData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="speed" label={{ value: 'Velocidad del Viento (m/s)', position: 'insideBottom', offset: 0 }} />
+                            <YAxis label={{ value: 'Frecuencia', angle: -90, position: 'insideLeft' }} />
+                            <Tooltip />
+                            <Bar dataKey="frequency" fill="#8884d8" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <Alert>
+                          <AlertDescription>No hay datos de distribución de Weibull disponibles.</AlertDescription>
+                        </Alert>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Gráfico de Densidad de Potencia */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center"><BarChart3 className="mr-2 h-5 w-5" /> Densidad de Potencia</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {powerDensityData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={300}>
+                          <BarChart data={powerDensityData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="speed" label={{ value: 'Velocidad del Viento (m/s)', position: 'insideBottom', offset: 0 }} />
+                            <YAxis label={{ value: 'Densidad de Potencia (W/m²)', angle: -90, position: 'insideLeft' }} />
+                            <Tooltip />
+                            <Bar dataKey="density" fill="#8884d8" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <Alert>
+                          <AlertDescription>No hay datos de densidad de potencia disponibles.</AlertDescription>
+                        </Alert>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Gráfico de Frecuencia de Velocidad del Viento */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center"><BarChart3 className="mr-2 h-5 w-5" /> Frecuencia de Velocidad del Viento</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {windSpeedFrequencyData.length > 0 ? (
+                        <ResponsiveContainer width="100%" height={300}>
+                          <BarChart data={windSpeedFrequencyData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="speed" label={{ value: 'Velocidad del Viento (m/s)', position: 'insideBottom', offset: 0 }} />
+                            <YAxis label={{ value: 'Frecuencia', angle: -90, position: 'insideLeft' }} />
+                            <Tooltip />
+                            <Bar dataKey="frequency" fill="#8884d8" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <Alert>
+                          <AlertDescription>No hay datos de frecuencia de velocidad del viento disponibles.</AlertDescription>
+                        </Alert>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                </div>
+              ) : (
+                <div className="text-center text-gray-500">
+                  {loading ? (
+                    <p>Cargando resultados...</p>
+                  ) : (
+                    <p>Introduce las coordenadas y haz clic en 'Analizar Datos' para ver los resultados.</p>
+                  )}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
     </div>
-  );
+  )
 }
 
-export default App;
-
+export default App
