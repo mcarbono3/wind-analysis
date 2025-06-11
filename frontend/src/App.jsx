@@ -261,18 +261,35 @@ function App() {
   };
 
   const getViabilityColor = (level) => {
-    switch (level) {
-      case 'Alto': return 'bg-green-500';
-      case 'Moderado': return 'bg-yellow-500';
-      case 'Bajo': return 'bg-red-500';
-      default: return 'bg-gray-500';
+    if (!level) return 'bg-gray-500';
+    
+    const normalizedLevel = level.toLowerCase();
+    switch (normalizedLevel) {
+      case 'alto':
+      case 'alta':
+      case 'high': 
+        return 'bg-green-500';
+      case 'moderado':
+      case 'moderada':
+      case 'medium':
+      case 'moderate': 
+        return 'bg-yellow-500';
+      case 'bajo':
+      case 'baja':
+      case 'low': 
+        return 'bg-red-500';
+      default: 
+        return 'bg-gray-500';
     }
   };
 
   const getViabilityIcon = (message) => {
-    if (message?.includes('✅')) return '✅';
-    if (message?.includes('⚠️')) return '⚠️';
-    if (message?.includes('❌')) return '❌';
+    if (!message) return '❓';
+    
+    const normalizedMessage = message.toLowerCase();
+    if (normalizedMessage.includes('✅') || normalizedMessage.includes('viable') || normalizedMessage.includes('recomendado')) return '✅';
+    if (normalizedMessage.includes('⚠️') || normalizedMessage.includes('moderado') || normalizedMessage.includes('precaución')) return '⚠️';
+    if (normalizedMessage.includes('❌') || normalizedMessage.includes('no viable') || normalizedMessage.includes('no recomendado')) return '❌';
     return '📊';
   };
 
@@ -474,15 +491,22 @@ function App() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <p><strong>Área Analizada:</strong> {analysisData.location.bounds[0][0].toFixed(2)}°, {analysisData.location.bounds[0][1].toFixed(2)}° a {analysisData.location.bounds[1][0].toFixed(2)}°, {analysisData.location.bounds[1][1].toFixed(2)}°</p>
-                    <p><strong>Fecha de Inicio:</strong> {dateRange.startDate}</p>
-                    <p><strong>Fecha de Fin:</strong> {dateRange.endDate}</p>
-                    <div className={`p-3 rounded-md ${getViabilityColor(analysisData.ai_diagnosis.viability_level)} text-white flex items-center space-x-2`}>
-                      <span className="text-2xl">{getViabilityIcon(analysisData.ai_diagnosis.viability_message)}</span>
-                      <p className="font-bold">{analysisData.ai_diagnosis.viability_message}</p>
-                    </div>
-                    <p className="text-sm text-gray-700"><strong>Confianza del Diagnóstico:</strong> {(analysisData.ai_diagnosis.confidence * 100).toFixed(2)}%</p>
-                    <p className="text-sm text-gray-700"><strong>Factores Clave:</strong> {analysisData.ai_diagnosis.key_factors}</p>
+                    <p><strong>Área Analizada:</strong> {analysisData?.location?.bounds?.[0]?.[0]?.toFixed(2) || 'N/A'}°, {analysisData?.location?.bounds?.[0]?.[1]?.toFixed(2) || 'N/A'}° a {analysisData?.location?.bounds?.[1]?.[0]?.toFixed(2) || 'N/A'}°, {analysisData?.location?.bounds?.[1]?.[1]?.toFixed(2) || 'N/A'}°</p>
+                    <p><strong>Fecha de Inicio:</strong> {dateRange?.startDate || 'N/A'}</p>
+                    <p><strong>Fecha de Fin:</strong> {dateRange?.endDate || 'N/A'}</p>
+                    {analysisData?.viability_level ? (
+                      <div className={`p-3 rounded-md ${getViabilityColor(analysisData.viability_level)} text-white flex items-center space-x-2`}>
+                        <span className="text-2xl">{getViabilityIcon(analysisData.recommendation)}</span>
+                        <p className="font-bold">{analysisData.recommendation || 'Sin recomendación disponible'}</p>
+                      </div>
+                    ) : (
+                      <div className="p-3 rounded-md bg-gray-500 text-white flex items-center space-x-2">
+                        <span className="text-2xl">❓</span>
+                        <p className="font-bold">Datos de viabilidad no disponibles</p>
+                      </div>
+                    )}
+                    <p className="text-sm text-gray-700"><strong>Velocidad Promedio del Viento:</strong> {analysisData?.avg_wind_speed?.toFixed(2) || 'N/A'} m/s</p>
+                    <p className="text-sm text-gray-700"><strong>Nivel de Viabilidad:</strong> {analysisData?.viability_level || 'No disponible'}</p>
                   </CardContent>
                 </Card>
 
@@ -627,5 +651,4 @@ function App() {
 }
 
 export default App;
-
 
