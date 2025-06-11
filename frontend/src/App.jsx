@@ -12,7 +12,6 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import axios from 'axios';
 import 'leaflet/dist/leaflet.css';
 import './App.css';
-import html2pdf from 'html2pdf.js';
 
 // Configuración de la API
 const API_BASE_URL = 'https://wind-analysis.onrender.com/api';
@@ -174,42 +173,8 @@ function App() {
     const lonDiff = Math.abs(selectedArea[1][1] - selectedArea[0][1]);
     
     if (latDiff < 0.01 || lonDiff < 0.01) {
-      setError("El área seleccionada es demasiado pequeña. Por favor selecciona un área más grande.");
-      console.log("Error: Selected area is too small.");
-      return;
-    }
-
-    // Validar que la fecha de inicio no sea posterior a la fecha de fin
-    if (new Date(dateRange.startDate) > new Date(dateRange.endDate)) {
-      setError("La fecha de inicio no puede ser posterior a la fecha de fin.");
-      console.log("Error: Start date is after end date.");
-      return;
-    }
-
-    // Validar que la fecha de inicio no sea posterior a la fecha de fin
-    if (new Date(dateRange.startDate) > new Date(dateRange.endDate)) {
-      setError("La fecha de inicio no puede ser posterior a la fecha de fin.");
-      console.log("Error: Start date is after end date.");
-      return;
-    }
-
-    // Validar que el rango de fechas no exceda un límite (ej. 365 días)
-    const start = new Date(dateRange.startDate);
-    const end = new Date(dateRange.endDate);
-    const diffTime = Math.abs(end - start);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-
-    const MAX_DAYS = 365; // Ajusta este valor según los límites del backend
-    if (diffDays > MAX_DAYS) {
-      setError(`El rango de fechas no puede exceder los ${MAX_DAYS} días. Por favor, selecciona un rango de fechas más pequeño.`);
-      console.log(`Error: Date range exceeds ${MAX_DAYS} days.`);
-      return;
-    }
-
-    // Validar que la fecha de inicio no sea posterior a la fecha de fin
-    if (new Date(dateRange.startDate) > new Date(dateRange.endDate)) {
-      setError("La fecha de inicio no puede ser posterior a la fecha de fin.");
-      console.log("Error: Start date is after end date.");
+      setError('El área seleccionada es demasiado pequeña. Por favor selecciona un área más grande.');
+      console.log('Error: Selected area is too small.');
       return;
     }
 
@@ -413,7 +378,11 @@ function App() {
             <TabsTrigger value="analysis" className="flex items-center space-x-2">
               <BarChart3 className="h-4 w-4" />
               <span>Configuración</span>
-            </TabsTrigger> // hasta aqui va la mejora V5
+            </TabsTrigger>
+            <TabsTrigger value="results" className="flex items-center space-x-2">
+              <TrendingUp className="h-4 w-4" />
+              <span>Resultados</span>
+            </TabsTrigger>
           </TabsList>
 
           {/* Tab: Mapa */}
@@ -732,7 +701,6 @@ function App() {
 }
 
 export default App;
-
 
 
 
