@@ -102,6 +102,13 @@ const normalizeAnalysisData = (rawAnalysis) => {
   return normalized;
 };
 
+// 🔧 NUEVO: Fallback visual si no hay datos
+const FallbackNotice = ({ message }) => (
+  <div className="text-center py-8 text-gray-500">
+    <p>{message || 'Datos no disponibles para esta sección.'}</p>
+  </div>
+);
+
 // Función para extraer estadísticas - COMPLETAMENTE REESCRITA
 const extractStatistics = (analysis) => {
   console.log('📊 extractStatistics - Input analysis:', analysis);
@@ -428,13 +435,27 @@ function App() {
     setError(null);
   };
 
+// 🔧 NUEVO: Verificación previa al análisis
+const isValidArea = (area) => {
+  if (!area || area.length !== 2) return false;
+  const latDiff = Math.abs(area[1][0] - area[0][0]);
+  const lonDiff = Math.abs(area[1][1] - area[0][1]);
+  return latDiff >= 0.005 && lonDiff >= 0.005;
+};
+
   const handleAnalysis = async () => {
     console.log('🚀 App - handleAnalysis called. selectedArea:', selectedArea);
-    if (!selectedArea) {
-      setError('Por favor selecciona un área en el mapa');
-      console.log('❌ Error: No area selected.');
-      return;
+if (!isValidArea(selectedArea)) {
+  setError('Área inválida. Selecciona un área suficientemente grande.');
+  return;
     }
+
+  // 🔧 NUEVO: función para renderizar gráficos
+  const renderChart = (data, ChartComponent) => (
+    Array.isArray(data) && data.length > 0
+      ? <ChartComponent data={data} />
+      : <FallbackNotice message="No hay datos disponibles para graficar." />
+  );
 
     // Validar que el área seleccionada tenga dimensiones mínimas (reducido a 0.005)
     const latDiff = Math.abs(selectedArea[1][0] - selectedArea[0][0]);
@@ -496,8 +517,9 @@ function App() {
       console.log('📡 ERA5 Data structure:', Object.keys(era5Data));
 
       // Validar que los datos de ERA5 tengan la estructura esperada
-      if (!era5Data.wind_speed_10m || !Array.isArray(era5Data.wind_speed_10m) || era5Data.wind_speed_10m.length === 0) {
-        throw new Error('Los datos de viento recibidos no tienen el formato esperado');
+      
+	if (!era5Data || !Array.isArray(era5Data.wind_speed_10m)) {
+  	throw new Error('ERA5 sin datos válidos');
       }
 
       // 2. Realizar el análisis de viento con los datos de ERA5
@@ -912,26 +934,19 @@ function App() {
                     <CardTitle>Evolución Temporal del Viento (100m)</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {chartData.timeSeries.length > 0 ? (
-                      <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={chartData.timeSeries}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis 
-                            dataKey="time" 
-                            tickFormatter={(tick) => formatDate(tick, 'Fecha inválida')} 
-                          />
-                          <YAxis />
-                          <Tooltip 
-                            labelFormatter={(label) => formatDateTime(label, 'Fecha inválida')} 
-                          />
-                          <Line type="monotone" dataKey="speed" stroke="#8884d8" name="Velocidad del Viento (m/s)" dot={false} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="text-center py-8 text-gray-500">
-                        <p>No hay datos de evolución temporal disponibles.</p>
-                        <p className="text-sm mt-2">Los datos pueden estar procesándose o no estar disponibles para el área seleccionada.</p>
-                      </div>
+                 {renderChart(
+ 		 chartData.timeSeries,
+  		({ data }) => (
+   		 <ResponsiveContainer width="100%" height={300}>
+    		  <LineChart data={data}>
+      		  <CartesianGrid strokeDasharray="3 3" />
+      		  <XAxis dataKey="time" />
+       		 <YAxis />
+       		 <Tooltip />
+       		 <Line type="monotone" dataKey="speed" stroke="#8884d8" />
+      		</LineChart>
+    		</ResponsiveContainer>
+ 		 )
                     )}
                   </CardContent>
                 </Card>
@@ -942,21 +957,19 @@ function App() {
                     <CardTitle>Histograma de Velocidad del Viento con Ajuste Weibull</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {chartData.weibullHistogram.length > 0 ? (
-                      <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={chartData.weibullHistogram}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="speed_bin" />
-                          <YAxis />
-                          <Tooltip />
-                          <Bar dataKey="frequency" fill="#8884d8" name="Frecuencia" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="text-center py-8 text-gray-500">
-                        <p>No hay datos de histograma disponibles.</p>
-                        <p className="text-sm mt-2">Los datos pueden estar procesándose o no estar disponibles para el área seleccionada.</p>
-                      </div>
+                 {renderChart(
+  		chartData.weibullHistogram,
+  		({ data }) => (
+  		  <ResponsiveContainer width="100%" height={300}>
+    		  	<BarChart data={data}>
+      		  	<CartesianGrid strokeDasharray="3 3" />
+       		 	<XAxis dataKey="speed_bin" />
+       		 	<YAxis />
+       			 <Tooltip />
+       			 <Bar dataKey="frequency" fill="#8884d8" name="Frecuencia" />
+     		 </BarChart>
+    		</ResponsiveContainer>
+  		)
                     )}
                   </CardContent>
                 </Card>
@@ -967,20 +980,19 @@ function App() {
                     <CardTitle>Patrones Horarios de Velocidad del Viento</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {chartData.hourlyPatterns.length > 0 ? (
-                      <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={chartData.hourlyPatterns}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="hour" />
-                          <YAxis />
-                          <Tooltip />
-                          <Bar dataKey="speed" fill="#82ca9d" name="Velocidad Promedio (m/s)" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="text-center py-8 text-gray-500">
-                        <p>No hay datos de patrones horarios disponibles.</p>
-                      </div>
+		{renderChart(
+ 		 chartData.hourlyPatterns,
+  			({ data }) => (
+   			 <ResponsiveContainer width="100%" height={300}>
+     			 <BarChart data={data}>
+      			  <CartesianGrid strokeDasharray="3 3" />
+       			 <XAxis dataKey="hour" />
+      		 	 <YAxis />
+       			 <Tooltip />
+       			 <Bar dataKey="speed" fill="#82ca9d" name="Velocidad Promedio (m/s)" />
+      			</BarChart>
+    			</ResponsiveContainer>
+  		  )
                     )}
                   </CardContent>
                 </Card>
