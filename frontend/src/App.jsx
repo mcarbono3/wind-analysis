@@ -216,8 +216,18 @@ const prepareChartData = (analysis, era5Data) => {
 
   // Preparar datos de serie temporal con múltiples fuentes posibles
   const windSpeeds100m = safeArray(era5Data.wind_speed_100m || era5Data.wind_100m || era5Data.speed_100m);
-  const timestamps = safeArray(era5Data.timestamps || era5Data.time || era5Data.dates);
-  
+  let timestamps = safeArray(era5Data.timestamps || era5Data.time || era5Data.dates);
+
+// 🔧 PARCHE TEMPORAL: generar timestamps simulados si vienen vacíos
+if (timestamps.length === 0 && windSpeeds100m.length > 0) {
+  console.warn('⚠️ timestamps vacíos: generando simulados para pruebas');
+  timestamps = windSpeeds100m.map((_, i) => {
+    const hour = String(i % 24).padStart(2, '0');
+    const day = String(Math.floor(i / 24) + 1).padStart(2, '0');
+    return `2024-01-${day}T${hour}:00`;
+  });
+}
+	
   console.log('📊 prepareChartData - windSpeeds100m length:', windSpeeds100m.length);
   console.log('📊 prepareChartData - timestamps length:', timestamps.length);
   console.log('📊 prepareChartData - windSpeeds100m sample:', windSpeeds100m.slice(0, 5));
