@@ -563,9 +563,7 @@ const isAnalysisEmpty = Object.keys(rawAnalysis?.basic_statistics || {}).length 
 
 if (isAnalysisEmpty) {
   console.warn('⚠️ Inyectando análisis simulado para pruebas frontend');
-  // ... aquí todo tu parche
-}
-
+  
   normalizedAnalysis.basic_statistics = {
     count: 28,
     data_availability: 100,
