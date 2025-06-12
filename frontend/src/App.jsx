@@ -559,8 +559,12 @@ if (!isValidArea(selectedArea)) {
       console.log('✅ Normalized analysis data:', normalizedAnalysis);
 	
 // 🔧 PARCHE TEMPORAL: inyectar análisis simulado si los reales están vacíos
-if (!normalizedAnalysis.basic_statistics?.mean || normalizedAnalysis.basic_statistics.mean === 0) {
+const isAnalysisEmpty = Object.keys(rawAnalysis?.basic_statistics || {}).length === 0;
+
+if (isAnalysisEmpty) {
   console.warn('⚠️ Inyectando análisis simulado para pruebas frontend');
+  // ... aquí todo tu parche
+}
 
   normalizedAnalysis.basic_statistics = {
     count: 28,
@@ -615,10 +619,7 @@ normalizedAnalysis.power_density = {
     }))
   };
 
-  normalizedAnalysis.hourly_patterns = {
-    mean_by_hour: Object.fromEntries(Array(24).fill(0).map((_, i) => [i, 3 + Math.random() * 3]))
-  };
-}
+ }
 
 // ✅ INCLUIR DESPUÉS DE hourly_patterns
 
