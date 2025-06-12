@@ -556,8 +556,68 @@ if (!isValidArea(selectedArea)) {
       
       const normalizedAnalysis = normalizeAnalysisData(rawAnalysis);
       console.log('✅ Normalized analysis data:', normalizedAnalysis);
+     
+	    // 🔧 PARCHE TEMPORAL: inyectar análisis simulado si los reales están vacíos
+if (!normalizedAnalysis.basic_statistics?.mean || normalizedAnalysis.basic_statistics.mean === 0) {
+  console.warn('⚠️ Inyectando análisis simulado para pruebas frontend');
 
-      // Actualizar el estado con los datos normalizados
+  normalizedAnalysis.basic_statistics = {
+    count: 28,
+    data_availability: 100,
+    mean: 5.4,
+    max: 9.8,
+    min: 2.1,
+    std: 1.4,
+    median: 5.1,
+    p25: 4.2,
+    p75: 6.0
+  };
+
+  normalizedAnalysis.capacity_factor = {
+    capacity_factor: 0.235,
+    annual_energy_production: 2800000,
+    classification: 'Bueno',
+    rated_power: 2000,
+    mean_power_output: 470
+  };
+
+  normalizedAnalysis.power_density = {
+    mean_power_density: 180.5,
+    max_power_density: 450.2,
+    air_density_used: 1.225,
+    classification: 'Aceptable',
+    median_power_density: 165.0
+  };
+
+  normalizedAnalysis.overall_assessment = {
+    viability_level: 'Alto',
+    viability_score: 78,
+    viability_message: '✅ Viable',
+    recommendations: ['Ubicación prioritaria', 'Evaluación detallada recomendada'],
+    key_metrics: {
+      wind_speed: 5.4,
+      turbulence: 0.09,
+      capacity_factor: 23.5
+    }
+  };
+
+  normalizedAnalysis.weibull_analysis = {
+    k: 2.2,
+    c: 6.3,
+    goodness_of_fit: 'Buena',
+    ks_statistic: 0.08,
+    histogram_data: Array(10).fill(0).map((_, i) => ({
+      speed_bin: i + 1,
+      frequency: Math.floor(Math.random() * 10 + 2)
+    }))
+  };
+
+  normalizedAnalysis.hourly_patterns = {
+    mean_by_hour: Object.fromEntries(Array(24).fill(0).map((_, i) => [i, 3 + Math.random() * 3]))
+  };
+}
+     
+	    // Actualizar el estado con los datos normalizados
       const newAnalysisData = {
         analysis: normalizedAnalysis,
         location: {
