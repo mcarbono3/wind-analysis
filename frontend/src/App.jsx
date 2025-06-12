@@ -226,8 +226,8 @@ if (timestamps.length === 0 && windSpeeds100m.length > 0) {
     const day = String(Math.floor(i / 24) + 1).padStart(2, '0');
     return `2024-01-${day}T${hour}:00`;
   });
-}
-	
+}  
+
   console.log('📊 prepareChartData - windSpeeds100m length:', windSpeeds100m.length);
   console.log('📊 prepareChartData - timestamps length:', timestamps.length);
   console.log('📊 prepareChartData - windSpeeds100m sample:', windSpeeds100m.slice(0, 5));
@@ -453,13 +453,13 @@ const isValidArea = (area) => {
   return latDiff >= 0.005 && lonDiff >= 0.005;
 };
 
- // 🔧 NUEVO: función para renderizar gráficos
+  // 🔧 NUEVO: función para renderizar gráficos
   const renderChart = (data, ChartComponent) => (
     Array.isArray(data) && data.length > 0
       ? <ChartComponent data={data} />
       : <FallbackNotice message="No hay datos disponibles para graficar." />
   );
-	
+
   const handleAnalysis = async () => {
     console.log('🚀 App - handleAnalysis called. selectedArea:', selectedArea);
 if (!isValidArea(selectedArea)) {
@@ -467,7 +467,7 @@ if (!isValidArea(selectedArea)) {
   return;
     }
 
-     // Validar que el área seleccionada tenga dimensiones mínimas (reducido a 0.005)
+    // Validar que el área seleccionada tenga dimensiones mínimas (reducido a 0.005)
     const latDiff = Math.abs(selectedArea[1][0] - selectedArea[0][0]);
     const lonDiff = Math.abs(selectedArea[1][1] - selectedArea[0][1]);
     
@@ -556,8 +556,8 @@ if (!isValidArea(selectedArea)) {
       
       const normalizedAnalysis = normalizeAnalysisData(rawAnalysis);
       console.log('✅ Normalized analysis data:', normalizedAnalysis);
-     
-	    // 🔧 PARCHE TEMPORAL: inyectar análisis simulado si los reales están vacíos
+	
+// 🔧 PARCHE TEMPORAL: inyectar análisis simulado si los reales están vacíos
 if (!normalizedAnalysis.basic_statistics?.mean || normalizedAnalysis.basic_statistics.mean === 0) {
   console.warn('⚠️ Inyectando análisis simulado para pruebas frontend');
 
@@ -616,8 +616,31 @@ if (!normalizedAnalysis.basic_statistics?.mean || normalizedAnalysis.basic_stati
     mean_by_hour: Object.fromEntries(Array(24).fill(0).map((_, i) => [i, 3 + Math.random() * 3]))
   };
 }
-     
-	    // Actualizar el estado con los datos normalizados
+
+// ✅ INCLUIR DESPUÉS DE hourly_patterns
+
+// Datos simulados para histograma de Weibull
+normalizedAnalysis.weibull_analysis.histogram_data = Array(10).fill(0).map((_, i) => ({
+  speed_bin: i + 1,
+  frequency: Math.floor(Math.random() * 10 + 5)
+}));
+
+// Datos simulados para rosa de vientos
+normalizedAnalysis.wind_rose = {
+  data: Array(8).fill(0).map((_, i) => ({
+    direction: ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][i],
+    frequency: Math.random() * 10 + 2
+  }))
+};
+
+// Datos simulados para patrones horarios (si aún no estaba)
+normalizedAnalysis.hourly_patterns = {
+  mean_by_hour: Object.fromEntries(
+    Array(24).fill(0).map((_, i) => [i, parseFloat((3 + Math.random() * 3).toFixed(2))])
+  )
+}
+
+      // Actualizar el estado con los datos normalizados
       const newAnalysisData = {
         analysis: normalizedAnalysis,
         location: {
@@ -1137,4 +1160,5 @@ if (!normalizedAnalysis.basic_statistics?.mean || normalizedAnalysis.basic_stati
 }
 
 export default App;
+
 
