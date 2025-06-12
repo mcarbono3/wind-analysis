@@ -443,6 +443,13 @@ const isValidArea = (area) => {
   return latDiff >= 0.005 && lonDiff >= 0.005;
 };
 
+ // 🔧 NUEVO: función para renderizar gráficos
+  const renderChart = (data, ChartComponent) => (
+    Array.isArray(data) && data.length > 0
+      ? <ChartComponent data={data} />
+      : <FallbackNotice message="No hay datos disponibles para graficar." />
+  );
+	
   const handleAnalysis = async () => {
     console.log('🚀 App - handleAnalysis called. selectedArea:', selectedArea);
 if (!isValidArea(selectedArea)) {
@@ -450,14 +457,7 @@ if (!isValidArea(selectedArea)) {
   return;
     }
 
-  // 🔧 NUEVO: función para renderizar gráficos
-  const renderChart = (data, ChartComponent) => (
-    Array.isArray(data) && data.length > 0
-      ? <ChartComponent data={data} />
-      : <FallbackNotice message="No hay datos disponibles para graficar." />
-  );
-
-    // Validar que el área seleccionada tenga dimensiones mínimas (reducido a 0.005)
+     // Validar que el área seleccionada tenga dimensiones mínimas (reducido a 0.005)
     const latDiff = Math.abs(selectedArea[1][0] - selectedArea[0][0]);
     const lonDiff = Math.abs(selectedArea[1][1] - selectedArea[0][1]);
     
