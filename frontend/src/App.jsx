@@ -67,11 +67,12 @@ const formatDateTime = (dateString, defaultText = 'Fecha inválida') => {
   }
 };
 
-// Función para normalizar la estructura de datos del análisis basada en la estructura real
+// Función para normalizar la estructura de datos del análisis
 const normalizeAnalysisData = (rawAnalysis) => {
-  console.log('Normalizing analysis data:', rawAnalysis);
+  console.log('🔄 Normalizing analysis data:', rawAnalysis);
   
   if (!rawAnalysis) {
+    console.log('❌ No raw analysis data provided');
     return {
       basic_statistics: {},
       capacity_factor: {},
@@ -96,60 +97,125 @@ const normalizeAnalysisData = (rawAnalysis) => {
     hourly_patterns: rawAnalysis.hourly_patterns || {},
     monthly_patterns: rawAnalysis.monthly_patterns || {}
   };
-  console.log('Normalized analysis data (after processing):', normalized);
+  
+  console.log('✅ Normalized analysis data:', normalized);
   return normalized;
 };
 
-// Función para extraer estadísticas de la estructura real
+// Función para extraer estadísticas - COMPLETAMENTE REESCRITA
 const extractStatistics = (analysis) => {
-  const basicStats = safeGet(analysis, 'basic_statistics', {});
-  const capacityFactor = safeGet(analysis, 'capacity_factor', {});
-  const powerDensity = safeGet(analysis, 'power_density', {});
-  const weibullAnalysis = safeGet(analysis, 'weibull_analysis', {});
+  console.log('📊 extractStatistics - Input analysis:', analysis);
+  
+  // Verificar si analysis tiene la estructura esperada
+  if (!analysis || typeof analysis !== 'object') {
+    console.log('❌ extractStatistics - Analysis is null or not an object');
+    return {
+      mean_wind_speed_10m: 0,
+      mean_wind_speed_100m: 0,
+      max_wind_speed_10m: 0,
+      max_wind_speed_100m: 0,
+      std_wind_speed_10m: 0,
+      std_wind_speed_100m: 0,
+      capacity_factor_10m: 0,
+      capacity_factor_100m: 0,
+      power_density_10m: 0,
+      power_density_100m: 0,
+      weibull_k_10m: 0,
+      weibull_c_10m: 0,
+      weibull_k_100m: 0,
+      weibull_c_100m: 0
+    };
+  }
+
+  // Extraer cada sección con logs detallados
+  const basicStats = analysis.basic_statistics || {};
+  const capacityFactor = analysis.capacity_factor || {};
+  const powerDensity = analysis.power_density || {};
+  const weibullAnalysis = analysis.weibull_analysis || {};
+  
+  console.log('📈 extractStatistics - basicStats keys:', Object.keys(basicStats));
+  console.log('📈 extractStatistics - basicStats values:', basicStats);
+  console.log('⚡ extractStatistics - capacityFactor keys:', Object.keys(capacityFactor));
+  console.log('⚡ extractStatistics - capacityFactor values:', capacityFactor);
+  console.log('🔋 extractStatistics - powerDensity keys:', Object.keys(powerDensity));
+  console.log('🔋 extractStatistics - powerDensity values:', powerDensity);
+  console.log('📐 extractStatistics - weibullAnalysis keys:', Object.keys(weibullAnalysis));
+  console.log('📐 extractStatistics - weibullAnalysis values:', weibullAnalysis);
   
   const stats = {
-    mean_wind_speed_10m: safeNumber(basicStats.mean_wind_speed_10m),
-    mean_wind_speed_100m: safeNumber(basicStats.mean_wind_speed_100m),
-    max_wind_speed_10m: safeNumber(basicStats.max_wind_speed_10m),
-    max_wind_speed_100m: safeNumber(basicStats.max_wind_speed_100m),
-    std_wind_speed_10m: safeNumber(basicStats.std_wind_speed_10m),
-    std_wind_speed_100m: safeNumber(basicStats.std_wind_speed_100m),
-    capacity_factor_10m: safeNumber(capacityFactor.capacity_factor_10m),
-    capacity_factor_100m: safeNumber(capacityFactor.capacity_factor_100m),
-    power_density_10m: safeNumber(powerDensity.power_density_10m),
-    power_density_100m: safeNumber(powerDensity.power_density_100m),
-    weibull_k_10m: safeNumber(weibullAnalysis.k_10m),
-    weibull_c_10m: safeNumber(weibullAnalysis.c_10m),
-    weibull_k_100m: safeNumber(weibullAnalysis.k_100m),
-    weibull_c_100m: safeNumber(weibullAnalysis.c_100m)
+    mean_wind_speed_10m: safeNumber(basicStats.mean_wind_speed_10m || basicStats.mean_10m || basicStats.average_10m),
+    mean_wind_speed_100m: safeNumber(basicStats.mean_wind_speed_100m || basicStats.mean_100m || basicStats.average_100m),
+    max_wind_speed_10m: safeNumber(basicStats.max_wind_speed_10m || basicStats.max_10m || basicStats.maximum_10m),
+    max_wind_speed_100m: safeNumber(basicStats.max_wind_speed_100m || basicStats.max_100m || basicStats.maximum_100m),
+    std_wind_speed_10m: safeNumber(basicStats.std_wind_speed_10m || basicStats.std_10m || basicStats.deviation_10m),
+    std_wind_speed_100m: safeNumber(basicStats.std_wind_speed_100m || basicStats.std_100m || basicStats.deviation_100m),
+    capacity_factor_10m: safeNumber(capacityFactor.capacity_factor_10m || capacityFactor.factor_10m || capacityFactor.cf_10m),
+    capacity_factor_100m: safeNumber(capacityFactor.capacity_factor_100m || capacityFactor.factor_100m || capacityFactor.cf_100m),
+    power_density_10m: safeNumber(powerDensity.power_density_10m || powerDensity.density_10m || powerDensity.pd_10m),
+    power_density_100m: safeNumber(powerDensity.power_density_100m || powerDensity.density_100m || powerDensity.pd_100m),
+    weibull_k_10m: safeNumber(weibullAnalysis.k_10m || weibullAnalysis.shape_10m || weibullAnalysis.k_parameter_10m),
+    weibull_c_10m: safeNumber(weibullAnalysis.c_10m || weibullAnalysis.scale_10m || weibullAnalysis.c_parameter_10m),
+    weibull_k_100m: safeNumber(weibullAnalysis.k_100m || weibullAnalysis.shape_100m || weibullAnalysis.k_parameter_100m),
+    weibull_c_100m: safeNumber(weibullAnalysis.c_100m || weibullAnalysis.scale_100m || weibullAnalysis.c_parameter_100m)
   };
-  console.log('Extracted Statistics:', stats);
+  
+  console.log('✅ extractStatistics - Final extracted stats:', stats);
   return stats;
 };
 
-// Función para extraer datos de viabilidad de la estructura real
+// Función para extraer datos de viabilidad - COMPLETAMENTE REESCRITA
 const extractViability = (analysis) => {
-  const assessment = safeGet(analysis, 'overall_assessment', {});
+  console.log('🎯 extractViability - Input analysis:', analysis);
+  
+  if (!analysis || typeof analysis !== 'object') {
+    console.log('❌ extractViability - Analysis is null or not an object');
+    return {
+      level: 'No disponible',
+      recommendation: 'Sin recomendación disponible',
+      score: 0,
+      summary: 'Sin resumen disponible'
+    };
+  }
+
+  const assessment = analysis.overall_assessment || {};
+  console.log('🎯 extractViability - assessment keys:', Object.keys(assessment));
+  console.log('🎯 extractViability - assessment values:', assessment);
   
   const viabilityData = {
-    level: assessment.viability_level || assessment.level || 'No disponible',
-    recommendation: assessment.recommendation || assessment.message || 'Sin recomendación disponible',
-    score: safeNumber(assessment.viability_score || assessment.score),
-    summary: assessment.summary || 'Sin resumen disponible'
+    level: assessment.viability_level || assessment.level || assessment.rating || assessment.classification || 'No disponible',
+    recommendation: assessment.recommendation || assessment.message || assessment.advice || assessment.conclusion || 'Sin recomendación disponible',
+    score: safeNumber(assessment.viability_score || assessment.score || assessment.rating_score || assessment.points),
+    summary: assessment.summary || assessment.description || assessment.overview || 'Sin resumen disponible'
   };
-  console.log('Extracted Viability:', viabilityData);
+  
+  console.log('✅ extractViability - Final extracted viability:', viabilityData);
   return viabilityData;
 };
 
-// Función para preparar datos de gráficos
+// Función para preparar datos de gráficos - COMPLETAMENTE REESCRITA
 const prepareChartData = (analysis, era5Data) => {
-  console.log('Preparing chart data. Analysis:', analysis, 'ERA5 Data:', era5Data);
+  console.log('📊 prepareChartData - Input analysis:', analysis);
+  console.log('📊 prepareChartData - Input era5Data keys:', era5Data ? Object.keys(era5Data) : 'null');
 
-  const timeSeries = safeArray(analysis.time_series);
-  const windSpeeds100m = safeArray(era5Data.wind_speed_100m);
-  const timestamps = safeArray(era5Data.timestamps);
+  if (!analysis || typeof analysis !== 'object' || !era5Data || typeof era5Data !== 'object') {
+    console.log('❌ prepareChartData - Invalid input data');
+    return {
+      timeSeries: [],
+      weibullHistogram: [],
+      windRose: [],
+      hourlyPatterns: []
+    };
+  }
+
+  // Preparar datos de serie temporal con múltiples fuentes posibles
+  const windSpeeds100m = safeArray(era5Data.wind_speed_100m || era5Data.wind_100m || era5Data.speed_100m);
+  const timestamps = safeArray(era5Data.timestamps || era5Data.time || era5Data.dates);
   
-  // Preparar datos de serie temporal
+  console.log('📊 prepareChartData - windSpeeds100m length:', windSpeeds100m.length);
+  console.log('📊 prepareChartData - timestamps length:', timestamps.length);
+  console.log('📊 prepareChartData - windSpeeds100m sample:', windSpeeds100m.slice(0, 5));
+  console.log('📊 prepareChartData - timestamps sample:', timestamps.slice(0, 5));
+  
   const timeSeriesData = [];
   const minLength = Math.min(windSpeeds100m.length, timestamps.length);
   
@@ -161,35 +227,57 @@ const prepareChartData = (analysis, era5Data) => {
       });
     }
   }
-  console.log('TimeSeries Data for Chart:', timeSeriesData);
+  console.log('📊 prepareChartData - TimeSeries Data length:', timeSeriesData.length);
 
-  // Preparar datos de histograma de Weibull
-  const weibullData = safeArray(analysis.weibull_analysis?.histogram_data);
-  console.log('Weibull Histogram Data for Chart:', weibullData);
+  // Preparar datos de histograma de Weibull con múltiples fuentes posibles
+  const weibullData = safeArray(
+    analysis.weibull_analysis?.histogram_data || 
+    analysis.weibull_analysis?.histogram || 
+    analysis.weibull_analysis?.distribution ||
+    analysis.histogram_data
+  );
+  console.log('📊 prepareChartData - Weibull Histogram Data length:', weibullData.length);
   
-  // Preparar datos de rosa de vientos
-  const windRoseData = safeArray(analysis.wind_rose?.data);
-  console.log('Wind Rose Data for Chart:', windRoseData);
+  // Preparar datos de rosa de vientos con múltiples fuentes posibles
+  const windRoseData = safeArray(
+    analysis.wind_rose?.data || 
+    analysis.wind_rose?.distribution ||
+    analysis.wind_direction?.data ||
+    analysis.rose_data
+  );
+  console.log('📊 prepareChartData - Wind Rose Data length:', windRoseData.length);
   
-  // Preparar datos de patrones horarios
+  // Preparar datos de patrones horarios con múltiples fuentes posibles
   const hourlyData = [];
-  const hourlyPatterns = safeGet(analysis, 'hourly_patterns', {});
-  if (hourlyPatterns.mean_by_hour) {
-    Object.entries(hourlyPatterns.mean_by_hour).forEach(([hour, speed]) => {
+  const hourlyPatterns = analysis.hourly_patterns || analysis.hourly_data || analysis.patterns || {};
+  console.log('📊 prepareChartData - hourlyPatterns keys:', Object.keys(hourlyPatterns));
+  
+  const hourlyMeans = hourlyPatterns.mean_by_hour || hourlyPatterns.hourly_means || hourlyPatterns.by_hour || {};
+  if (Object.keys(hourlyMeans).length > 0) {
+    Object.entries(hourlyMeans).forEach(([hour, speed]) => {
       hourlyData.push({
         hour: parseInt(hour),
         speed: safeNumber(speed)
       });
     });
   }
-  console.log('Hourly Patterns Data for Chart:', hourlyData);
+  console.log('📊 prepareChartData - Hourly Patterns Data length:', hourlyData.length);
   
-  return {
+  const result = {
     timeSeries: timeSeriesData,
     weibullHistogram: weibullData,
     windRose: windRoseData,
     hourlyPatterns: hourlyData
   };
+  
+  console.log('✅ prepareChartData - Final result summary:', {
+    timeSeriesLength: result.timeSeries.length,
+    weibullHistogramLength: result.weibullHistogram.length,
+    windRoseLength: result.windRose.length,
+    hourlyPatternsLength: result.hourlyPatterns.length
+  });
+  
+  return result;
 };
 
 // Componente para manejar la selección en el mapa
@@ -199,14 +287,14 @@ function MapSelector({ onAreaSelect, selectedArea, isSelecting, setIsSelecting }
   const map = useMap();
 
   useEffect(() => {
-    console.log('MapSelector useEffect - isSelecting:', isSelecting);
+    console.log('🗺️ MapSelector useEffect - isSelecting:', isSelecting);
     if (isSelecting) {
-      console.log('MapSelector: Disabling map interactions');
+      console.log('🗺️ MapSelector: Disabling map interactions');
       map.dragging.disable();
       map.doubleClickZoom.disable();
       map.scrollWheelZoom.disable();
     } else {
-      console.log('MapSelector: Enabling map interactions');
+      console.log('🗺️ MapSelector: Enabling map interactions');
       map.dragging.enable();
       map.doubleClickZoom.enable();
       map.scrollWheelZoom.enable();
@@ -215,11 +303,11 @@ function MapSelector({ onAreaSelect, selectedArea, isSelecting, setIsSelecting }
 
   useMapEvents({
     mousedown: (e) => {
-      console.log('MapSelector mousedown event:', e.latlng, 'isSelecting:', isSelecting);
+      console.log('🗺️ MapSelector mousedown event:', e.latlng, 'isSelecting:', isSelecting);
       if (isSelecting) {
         setStartPoint([e.latlng.lat, e.latlng.lng]);
         setCurrentBounds([[e.latlng.lat, e.latlng.lng], [e.latlng.lat, e.latlng.lng]]);
-        console.log('MapSelector: Selection started at', e.latlng);
+        console.log('🗺️ MapSelector: Selection started at', e.latlng);
       }
     },
     mousemove: (e) => {
@@ -229,34 +317,34 @@ function MapSelector({ onAreaSelect, selectedArea, isSelecting, setIsSelecting }
           [Math.max(startPoint[0], e.latlng.lat), Math.max(startPoint[1], e.latlng.lng)]
         ];
         setCurrentBounds(newBounds);
-        console.log('MapSelector: Drawing rectangle to', e.latlng);
       }
     },
     mouseup: (e) => {
-      console.log('MapSelector mouseup event:', e.latlng, 'isSelecting:', isSelecting, 'startPoint:', startPoint);
+      console.log('🗺️ MapSelector mouseup event:', e.latlng, 'isSelecting:', isSelecting, 'startPoint:', startPoint);
       if (isSelecting && startPoint) {
         const endPoint = [e.latlng.lat, e.latlng.lng];
         const bounds = [
           [Math.min(startPoint[0], endPoint[0]), Math.min(startPoint[1], endPoint[1])],
           [Math.max(startPoint[0], endPoint[0]), Math.max(startPoint[1], endPoint[1])]
         ];
-        console.log('MapSelector - Selected bounds:', bounds);
+        console.log('🗺️ MapSelector - Selected bounds:', bounds);
         onAreaSelect(bounds);
         setIsSelecting(false);
         setStartPoint(null);
         setCurrentBounds(null);
-        console.log('MapSelector: Selection finished, isSelecting set to false');
+        console.log('🗺️ MapSelector: Selection finished');
       }
     },
     click: (e) => {
-      console.log('MapSelector click event:', e.latlng, 'isSelecting:', isSelecting, 'startPoint:', startPoint);
+      console.log('🗺️ MapSelector click event:', e.latlng, 'isSelecting:', isSelecting, 'startPoint:', startPoint);
       if (isSelecting && !startPoint) {
         const point = [e.latlng.lat, e.latlng.lng];
-        const bounds = [[point[0] - 0.01, point[1] - 0.01], [point[0] + 0.01, point[1] + 0.01]];
-        console.log('MapSelector - Selected point bounds:', bounds);
+        // Crear un área mínima de 0.02 grados para evitar el error de área muy pequeña
+        const bounds = [[point[0] - 0.02, point[1] - 0.02], [point[0] + 0.02, point[1] + 0.02]];
+        console.log('🗺️ MapSelector - Selected point bounds (expanded):', bounds);
         onAreaSelect(bounds);
         setIsSelecting(false);
-        console.log('MapSelector: Point selection finished, isSelecting set to false');
+        console.log('🗺️ MapSelector: Point selection finished');
       }
     }
   });
@@ -305,18 +393,15 @@ function App() {
   const [isMapSelecting, setIsMapSelecting] = useState(false);
 
   useEffect(() => {
-    console.log('App useEffect - isMapSelecting changed to:', isMapSelecting);
-  }, [isMapSelecting]);
-
-  useEffect(() => {
-    console.log('App useEffect - selectedArea changed to:', selectedArea);
-  }, [selectedArea]);
-
-  useEffect(() => {
-    console.log('App useEffect - analysisData changed to:', analysisData);
+    console.log('🔄 App useEffect - analysisData changed');
     if (analysisData && Object.keys(analysisData.analysis).length > 0) {
-      console.log('Detailed analysisData.analysis:', analysisData.analysis);
-      console.log('Detailed analysisData.era5Data:', analysisData.era5Data);
+      console.log('📊 Detailed analysisData.analysis keys:', Object.keys(analysisData.analysis));
+      console.log('📊 Detailed analysisData.era5Data keys:', Object.keys(analysisData.era5Data));
+      
+      // Log específico para cada sección del análisis
+      Object.entries(analysisData.analysis).forEach(([key, value]) => {
+        console.log(`📊 Analysis section [${key}]:`, value);
+      });
     }
   }, [analysisData]);
 
@@ -330,45 +415,44 @@ function App() {
   };
 
   const handleAreaSelect = (bounds) => {
-    console.log('App - handleAreaSelect called with bounds:', bounds);
+    console.log('🎯 App - handleAreaSelect called with bounds:', bounds);
     setSelectedArea(bounds);
     setError(null);
     setIsMapSelecting(false);
-    console.log('App - handleAreaSelect: isMapSelecting set to false');
   };
 
   const handleClearSelection = () => {
-    console.log('App - handleClearSelection called');
+    console.log('🧹 App - handleClearSelection called');
     setSelectedArea(null);
     setIsMapSelecting(false);
     setError(null);
   };
 
   const handleAnalysis = async () => {
-    console.log('App - handleAnalysis called. selectedArea:', selectedArea);
+    console.log('🚀 App - handleAnalysis called. selectedArea:', selectedArea);
     if (!selectedArea) {
       setError('Por favor selecciona un área en el mapa');
-      console.log('Error: No area selected.');
+      console.log('❌ Error: No area selected.');
       return;
     }
 
-    // Validar que el área seleccionada tenga dimensiones mínimas
+    // Validar que el área seleccionada tenga dimensiones mínimas (reducido a 0.005)
     const latDiff = Math.abs(selectedArea[1][0] - selectedArea[0][0]);
     const lonDiff = Math.abs(selectedArea[1][1] - selectedArea[0][1]);
     
-    if (latDiff < 0.01 || lonDiff < 0.01) {
+    if (latDiff < 0.005 || lonDiff < 0.005) {
       setError('El área seleccionada es demasiado pequeña. Por favor selecciona un área más grande.');
-      console.log('Error: Selected area is too small.');
+      console.log('❌ Error: Selected area is too small. LatDiff:', latDiff, 'LonDiff:', lonDiff);
       return;
     }
 
     setLoading(true);
     setError(null);
-    console.log('Starting analysis...');
+    console.log('🚀 Starting analysis...');
 
     try {
       // 1. Obtener datos de ERA5 del backend
-      console.log('Requesting ERA5 data from backend with parameters:', {
+      console.log('📡 Requesting ERA5 data from backend with parameters:', {
         lat_min: selectedArea[0][0],
         lat_max: selectedArea[1][0],
         lon_min: selectedArea[0][1],
@@ -384,6 +468,7 @@ function App() {
           '2m_temperature'
         ]
       });
+      
       const era5Response = await axios.post(`${API_BASE_URL}/wind-data`, {
         lat_min: selectedArea[0][0],
         lat_max: selectedArea[1][0],
@@ -401,13 +486,14 @@ function App() {
         ]
       });
 
-      console.log('ERA5 Data received:', era5Response.data);
+      console.log('📡 ERA5 Data received:', era5Response.data);
 
       if (era5Response.data.status !== 'success' || !era5Response.data.data) {
         throw new Error(era5Response.data.message || 'Error al obtener datos de ERA5');
       }
 
       const era5Data = era5Response.data.data;
+      console.log('📡 ERA5 Data structure:', Object.keys(era5Data));
 
       // Validar que los datos de ERA5 tengan la estructura esperada
       if (!era5Data.wind_speed_10m || !Array.isArray(era5Data.wind_speed_10m) || era5Data.wind_speed_10m.length === 0) {
@@ -415,16 +501,17 @@ function App() {
       }
 
       // 2. Realizar el análisis de viento con los datos de ERA5
-      console.log('Sending ERA5 data to wind analysis endpoint with parameters:', {
+      console.log('🔬 Sending ERA5 data to wind analysis endpoint with parameters:', {
         wind_speeds: era5Data.wind_speed_10m.flat(),
         air_density: 1.225
       });
+      
       const analysisResponse = await axios.post(`${API_BASE_URL}/wind-analysis`, {
         wind_speeds: era5Data.wind_speed_10m.flat(),
         air_density: 1.225
       });
 
-      console.log('Analysis Response received:', analysisResponse.data);
+      console.log('🔬 Analysis Response received:', analysisResponse.data);
 
       // Validar la respuesta del análisis
       if (!analysisResponse.data || !analysisResponse.data.analysis) {
@@ -433,11 +520,13 @@ function App() {
 
       // Normalizar los datos del análisis
       const rawAnalysis = analysisResponse.data.analysis;
-      const normalizedAnalysis = normalizeAnalysisData(rawAnalysis);
+      console.log('🔄 Raw analysis before normalization:', rawAnalysis);
       
-      console.log('Normalized analysis data:', normalizedAnalysis);
+      const normalizedAnalysis = normalizeAnalysisData(rawAnalysis);
+      console.log('✅ Normalized analysis data:', normalizedAnalysis);
 
-      setAnalysisData({
+      // Actualizar el estado con los datos normalizados
+      const newAnalysisData = {
         analysis: normalizedAnalysis,
         location: {
           bounds: selectedArea,
@@ -456,17 +545,21 @@ function App() {
           temperature_2m: safeArray(era5Data.temperature_2m),
           timestamps: safeArray(era5Data.timestamps)
         }
-      });
+      };
+
+      console.log('💾 Setting analysis data:', newAnalysisData);
+      setAnalysisData(newAnalysisData);
 
       setActiveTab('results');
-      console.log('Analysis completed successfully. Navigating to results tab.');
+      console.log('✅ Analysis completed successfully. Navigating to results tab.');
+      
     } catch (err) {
-      console.error('Error during analysis request:', err);
+      console.error('❌ Error during analysis request:', err);
       setError('Error al realizar el análisis: ' + (err.response?.data?.error || err.message));
-      console.log('Analysis failed. Error:', err.message);
+      console.log('❌ Analysis failed. Error:', err.message);
     } finally {
       setLoading(false);
-      console.log('Analysis process finished. Loading set to false.');
+      console.log('🏁 Analysis process finished. Loading set to false.');
     }
   };
 
@@ -539,8 +632,10 @@ function App() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      
+      console.log('📄 CSV export completed successfully');
     } catch (error) {
-      console.error('Error al exportar CSV:', error);
+      console.error('❌ Error al exportar CSV:', error);
       alert('Error al exportar CSV. Por favor intenta nuevamente.');
     }
   };
@@ -549,13 +644,23 @@ function App() {
     alert('Funcionalidad de exportar PDF en desarrollo. Próximamente disponible.');
   };
 
-  // Extraer datos normalizados para el renderizado
+  // Extraer datos normalizados para el renderizado - EJECUTAR DENTRO DEL RENDER
   const statistics = extractStatistics(analysisData.analysis);
   const viability = extractViability(analysisData.analysis);
   const chartData = prepareChartData(analysisData.analysis, analysisData.era5Data);
 
   // Verificar si hay datos de análisis
   const hasAnalysisData = analysisData && Object.keys(analysisData.analysis).length > 0;
+
+  console.log('🎨 Render - hasAnalysisData:', hasAnalysisData);
+  console.log('🎨 Render - statistics:', statistics);
+  console.log('🎨 Render - viability:', viability);
+  console.log('🎨 Render - chartData summary:', {
+    timeSeriesLength: chartData.timeSeries.length,
+    weibullHistogramLength: chartData.weibullHistogram.length,
+    windRoseLength: chartData.windRose.length,
+    hourlyPatternsLength: chartData.hourlyPatterns.length
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50">
@@ -636,7 +741,7 @@ function App() {
                   <div className="flex space-x-2">
                     <Button 
                       onClick={() => {
-                        console.log('App - Iniciar Selección button clicked. Current isMapSelecting:', isMapSelecting);
+                        console.log('🎯 App - Iniciar Selección button clicked');
                         setIsMapSelecting(true);
                       }} 
                       disabled={isMapSelecting}
@@ -764,7 +869,9 @@ function App() {
                         <span className="text-2xl">{getViabilityIcon(viability.recommendation)}</span>
                         <div>
                           <p className="font-bold">{viability.recommendation}</p>
-                          {viability.summary && <p className="text-sm mt-1">{viability.summary}</p>}
+                          {viability.summary && viability.summary !== 'Sin resumen disponible' && (
+                            <p className="text-sm mt-1">{viability.summary}</p>
+                          )}
                         </div>
                       </div>
                     ) : (
@@ -884,7 +991,7 @@ function App() {
                     <CardTitle>Análisis de Turbulencia</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {safeGet(analysisData, 'analysis.turbulence_analysis') ? (
+                    {safeGet(analysisData, 'analysis.turbulence_analysis') && Object.keys(analysisData.analysis.turbulence_analysis).length > 0 ? (
                       <div className="space-y-2">
                         <p><strong>Intensidad de Turbulencia (10m):</strong> {formatNumber(safeGet(analysisData, 'analysis.turbulence_analysis.turbulence_intensity_10m'))}</p>
                         <p><strong>Intensidad de Turbulencia (100m):</strong> {formatNumber(safeGet(analysisData, 'analysis.turbulence_analysis.turbulence_intensity_100m'))}</p>
@@ -948,3 +1055,4 @@ function App() {
 }
 
 export default App;
+
