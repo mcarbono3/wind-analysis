@@ -84,7 +84,7 @@ const normalizeAnalysisData = (rawAnalysis) => {
     };
   }
   
-  return {
+  const normalized = {
     basic_statistics: rawAnalysis.basic_statistics || {},
     capacity_factor: rawAnalysis.capacity_factor || {},
     overall_assessment: rawAnalysis.overall_assessment || {},
@@ -96,6 +96,8 @@ const normalizeAnalysisData = (rawAnalysis) => {
     hourly_patterns: rawAnalysis.hourly_patterns || {},
     monthly_patterns: rawAnalysis.monthly_patterns || {}
   };
+  console.log('Normalized analysis data (after processing):', normalized);
+  return normalized;
 };
 
 // Función para extraer estadísticas de la estructura real
@@ -105,7 +107,7 @@ const extractStatistics = (analysis) => {
   const powerDensity = safeGet(analysis, 'power_density', {});
   const weibullAnalysis = safeGet(analysis, 'weibull_analysis', {});
   
-  return {
+  const stats = {
     mean_wind_speed_10m: safeNumber(basicStats.mean_wind_speed_10m),
     mean_wind_speed_100m: safeNumber(basicStats.mean_wind_speed_100m),
     max_wind_speed_10m: safeNumber(basicStats.max_wind_speed_10m),
@@ -121,22 +123,28 @@ const extractStatistics = (analysis) => {
     weibull_k_100m: safeNumber(weibullAnalysis.k_100m),
     weibull_c_100m: safeNumber(weibullAnalysis.c_100m)
   };
+  console.log('Extracted Statistics:', stats);
+  return stats;
 };
 
 // Función para extraer datos de viabilidad de la estructura real
 const extractViability = (analysis) => {
   const assessment = safeGet(analysis, 'overall_assessment', {});
   
-  return {
+  const viabilityData = {
     level: assessment.viability_level || assessment.level || 'No disponible',
     recommendation: assessment.recommendation || assessment.message || 'Sin recomendación disponible',
     score: safeNumber(assessment.viability_score || assessment.score),
     summary: assessment.summary || 'Sin resumen disponible'
   };
+  console.log('Extracted Viability:', viabilityData);
+  return viabilityData;
 };
 
 // Función para preparar datos de gráficos
 const prepareChartData = (analysis, era5Data) => {
+  console.log('Preparing chart data. Analysis:', analysis, 'ERA5 Data:', era5Data);
+
   const timeSeries = safeArray(analysis.time_series);
   const windSpeeds100m = safeArray(era5Data.wind_speed_100m);
   const timestamps = safeArray(era5Data.timestamps);
@@ -153,12 +161,15 @@ const prepareChartData = (analysis, era5Data) => {
       });
     }
   }
-  
+  console.log('TimeSeries Data for Chart:', timeSeriesData);
+
   // Preparar datos de histograma de Weibull
   const weibullData = safeArray(analysis.weibull_analysis?.histogram_data);
+  console.log('Weibull Histogram Data for Chart:', weibullData);
   
   // Preparar datos de rosa de vientos
   const windRoseData = safeArray(analysis.wind_rose?.data);
+  console.log('Wind Rose Data for Chart:', windRoseData);
   
   // Preparar datos de patrones horarios
   const hourlyData = [];
@@ -171,6 +182,7 @@ const prepareChartData = (analysis, era5Data) => {
       });
     });
   }
+  console.log('Hourly Patterns Data for Chart:', hourlyData);
   
   return {
     timeSeries: timeSeriesData,
@@ -302,6 +314,10 @@ function App() {
 
   useEffect(() => {
     console.log('App useEffect - analysisData changed to:', analysisData);
+    if (analysisData && Object.keys(analysisData.analysis).length > 0) {
+      console.log('Detailed analysisData.analysis:', analysisData.analysis);
+      console.log('Detailed analysisData.era5Data:', analysisData.era5Data);
+    }
   }, [analysisData]);
 
   // Coordenadas del Caribe colombiano
@@ -910,8 +926,8 @@ function App() {
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      <p>Selecciona un área en el mapa y haz clic en "Iniciar Análisis Eólico" para ver los resultados.</p>
-                      <p className="text-sm">Los resultados incluirán estadísticas detalladas, gráficos y análisis de viabilidad eólica.</p>
+                      <p>No hay datos de análisis disponibles.</p>
+                      <p className="text-sm">Por favor, selecciona un área en el mapa e inicia un análisis.</p>
                     </div>
                   )}
                 </CardContent>
@@ -922,8 +938,8 @@ function App() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-gray-800 text-white py-4 mt-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm">
+      <footer className="bg-white shadow-sm border-t mt-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center text-gray-500 text-sm">
           © {new Date().getFullYear()} Análisis Eólico Caribe. Todos los derechos reservados.
         </div>
       </footer>
@@ -932,8 +948,3 @@ function App() {
 }
 
 export default App;
-
-
-
-
-
