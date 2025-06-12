@@ -555,6 +555,7 @@ if (!isValidArea(selectedArea)) {
       console.log('🔄 Raw analysis before normalization:', rawAnalysis);
       
       const normalizedAnalysis = normalizeAnalysisData(rawAnalysis);
+      const wasSimulated = !normalizedAnalysis.basic_statistics?.mean_10m;
       console.log('✅ Normalized analysis data:', normalizedAnalysis);
 	
 // 🔧 PARCHE TEMPORAL: inyectar análisis simulado si los reales están vacíos
@@ -564,7 +565,14 @@ if (!normalizedAnalysis.basic_statistics?.mean || normalizedAnalysis.basic_stati
   normalizedAnalysis.basic_statistics = {
     count: 28,
     data_availability: 100,
-    mean: 5.4,
+    mean_10m: 4.8,
+  mean_100m: 6.2,
+  max_10m: 8.9,
+  max_100m: 10.2,
+  std_10m: 1.2,
+  std_100m: 1.6,
+  median_10m: 4.6,
+  median_100m: 6.1,
     max: 9.8,
     min: 2.1,
     std: 1.4,
@@ -581,25 +589,20 @@ if (!normalizedAnalysis.basic_statistics?.mean || normalizedAnalysis.basic_stati
     mean_power_output: 470
   };
 
-  normalizedAnalysis.power_density = {
-    mean_power_density: 180.5,
-    max_power_density: 450.2,
-    air_density_used: 1.225,
-    classification: 'Aceptable',
-    median_power_density: 165.0
-  };
+normalizedAnalysis.power_density = {
+  mean_power_density: 180.5,
+  max_power_density: 450.2,
+  air_density_used: 1.225,
+  classification: 'Aceptable',
+  median_power_density: 165.0
+};
 
   normalizedAnalysis.overall_assessment = {
-    viability_level: 'Alto',
-    viability_score: 78,
-    viability_message: '✅ Viable',
-    recommendations: ['Ubicación prioritaria', 'Evaluación detallada recomendada'],
-    key_metrics: {
-      wind_speed: 5.4,
-      turbulence: 0.09,
-      capacity_factor: 23.5
-    }
-  };
+	viability_level: 'Alto',
+  	viability_score: 78,
+  	recommendation: 'Ubicación prioritaria recomendada',
+  	summary: 'El sitio presenta buenas condiciones de viento, baja turbulencia y un buen factor de capacidad.'
+	};
 
   normalizedAnalysis.weibull_analysis = {
     k: 2.2,
@@ -642,25 +645,26 @@ normalizedAnalysis.hourly_patterns = {
 
       // Actualizar el estado con los datos normalizados
       const newAnalysisData = {
-        analysis: normalizedAnalysis,
-        location: {
-          bounds: selectedArea,
-          center: [
-            (selectedArea[0][0] + selectedArea[1][0]) / 2,
-            (selectedArea[0][1] + selectedArea[1][1]) / 2
-          ]
-        },
-        era5Data: {
-          ...era5Data,
-          wind_speed_10m: safeArray(era5Data.wind_speed_10m),
-          wind_speed_100m: safeArray(era5Data.wind_speed_100m),
-          wind_direction_10m: safeArray(era5Data.wind_direction_10m),
-          wind_direction_100m: safeArray(era5Data.wind_direction_100m),
-          surface_pressure: safeArray(era5Data.surface_pressure),
-          temperature_2m: safeArray(era5Data.temperature_2m),
-          timestamps: safeArray(era5Data.timestamps)
-        }
-      };
+          analysis: normalizedAnalysis,
+  location: {
+    bounds: selectedArea,
+    center: [
+      (selectedArea[0][0] + selectedArea[1][0]) / 2,
+      (selectedArea[0][1] + selectedArea[1][1]) / 2
+    ]
+  },
+  era5Data: {
+    ...era5Data,
+    wind_speed_10m: safeArray(era5Data.wind_speed_10m),
+    wind_speed_100m: safeArray(era5Data.wind_speed_100m),
+    wind_direction_10m: safeArray(era5Data.wind_direction_10m),
+    wind_direction_100m: safeArray(era5Data.wind_direction_100m),
+    surface_pressure: safeArray(era5Data.surface_pressure),
+    temperature_2m: safeArray(era5Data.temperature_2m),
+    timestamps: safeArray(era5Data.timestamps)
+  },
+  simulated: wasSimulated
+};
 
       console.log('💾 Setting analysis data:', newAnalysisData);
       setAnalysisData(newAnalysisData);
@@ -894,6 +898,16 @@ normalizedAnalysis.hourly_patterns = {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+		{analysisData.simulated ? (
+ 		 <div className="p-3 rounded-md bg-yellow-100 text-yellow-800 text-sm">
+  		  ⚠️ Estos resultados son simulados para pruebas. No se recibió un análisis válido del backend.
+ 		 </div>
+		) : (
+  		<div className="p-3 rounded-md bg-green-100 text-green-800 text-sm">
+  		  ✅ Resultados basados en datos reales procesados correctamente.
+  		</div>
+		)}
+		
                   <div>
                     <Label htmlFor="startDate">Fecha de Inicio</Label>
                     <Input
@@ -1160,5 +1174,6 @@ normalizedAnalysis.hourly_patterns = {
 }
 
 export default App;
+
 
 
