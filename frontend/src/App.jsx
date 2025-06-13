@@ -72,16 +72,7 @@ const normalizeAnalysisData = (rawAnalysis) => {
   console.log('Normalizing analysis data:', rawAnalysis);
   
   if (!rawAnalysis) {
-    return {
-      basic_statistics: {},
-      capacity_factor: {},
-      overall_assessment: {},
-      power_density: {},
-      turbulence_analysis: {},
-      weibull_analysis: {},
-      wind_rose: {},
-      time_series: []
-    };
+    return null;
   }
   
   return {
@@ -100,10 +91,14 @@ const normalizeAnalysisData = (rawAnalysis) => {
 
 // Función para extraer estadísticas de la estructura real
 const extractStatistics = (analysis) => {
+  if (!analysis) return {};
+  
   const basicStats = safeGet(analysis, 'basic_statistics', {});
   const capacityFactor = safeGet(analysis, 'capacity_factor', {});
   const powerDensity = safeGet(analysis, 'power_density', {});
   const weibullAnalysis = safeGet(analysis, 'weibull_analysis', {});
+  
+  console.log('Extracting statistics from:', { basicStats, capacityFactor, powerDensity, weibullAnalysis });
   
   return {
     mean_wind_speed_10m: safeNumber(basicStats.mean_wind_speed_10m),
@@ -125,7 +120,11 @@ const extractStatistics = (analysis) => {
 
 // Función para extraer datos de viabilidad de la estructura real
 const extractViability = (analysis) => {
+  if (!analysis) return {};
+  
   const assessment = safeGet(analysis, 'overall_assessment', {});
+  
+  console.log('Extracting viability from:', assessment);
   
   return {
     level: assessment.viability_level || assessment.level || 'No disponible',
@@ -137,6 +136,8 @@ const extractViability = (analysis) => {
 
 // Función para preparar datos de gráficos
 const prepareChartData = (analysis, era5Data) => {
+  if (!analysis || !era5Data) return { timeSeries: [], weibullHistogram: [], windRose: [], hourlyPatterns: [] };
+  
   const timeSeries = safeArray(analysis.time_series);
   const windSpeeds100m = safeArray(era5Data.wind_speed_100m);
   const timestamps = safeArray(era5Data.timestamps);
@@ -171,6 +172,8 @@ const prepareChartData = (analysis, era5Data) => {
       });
     });
   }
+  
+  console.log('Prepared chart data:', { timeSeriesData, weibullData, windRoseData, hourlyData });
   
   return {
     timeSeries: timeSeriesData,
@@ -275,7 +278,7 @@ function App() {
     endDate: '2024-01-07'
   });
   const [analysisData, setAnalysisData] = useState({
-    analysis: {},
+    analysis: null,
     location: {},
     era5Data: {
       wind_speed_10m: [],
@@ -538,8 +541,16 @@ function App() {
   const viability = extractViability(analysisData.analysis);
   const chartData = prepareChartData(analysisData.analysis, analysisData.era5Data);
 
-  // Verificar si hay datos de análisis
-  const hasAnalysisData = analysisData && Object.keys(analysisData.analysis).length > 0;
+  // Verificar si hay datos de análisis - CORREGIDO
+  const hasAnalysisData = analysisData && analysisData.analysis && analysisData.analysis !== null;
+
+  console.log('Render check:', { 
+    hasAnalysisData, 
+    analysisData: analysisData.analysis, 
+    statistics, 
+    viability, 
+    chartData 
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50">
@@ -932,6 +943,8 @@ function App() {
 }
 
 export default App;
+
+
 
 
 
