@@ -553,93 +553,69 @@ if (!isValidArea(selectedArea)) {
       // Normalizar los datos del análisis
       const rawAnalysis = analysisResponse.data.analysis;
       console.log('🔄 Raw analysis before normalization:', rawAnalysis);
-      
       const normalizedAnalysis = normalizeAnalysisData(rawAnalysis);
-      const wasSimulated = !normalizedAnalysis.basic_statistics?.mean_10m;
-      console.log('✅ Normalized analysis data:', normalizedAnalysis);
-	
-// 🔧 PARCHE TEMPORAL: inyectar análisis simulado si los reales están vacíos
-const isAnalysisEmpty = Object.keys(rawAnalysis?.basic_statistics || {}).length === 0;
+
+     const rawAnalysis = analysisResponse.data;
+let normalizedAnalysis = normalizeAnalysisData(rawAnalysis);
+let wasSimulated = false;
+
+const isAnalysisEmpty = Object.keys(normalizedAnalysis?.basic_statistics || {}).length === 0;
 
 if (isAnalysisEmpty) {
   console.warn('⚠️ Inyectando análisis simulado para pruebas frontend');
-  
-  normalizedAnalysis.basic_statistics = {
-    count: 28,
-    data_availability: 100,
-    mean_10m: 4.8,
-  mean_100m: 6.2,
-  max_10m: 8.9,
-  max_100m: 10.2,
-  std_10m: 1.2,
-  std_100m: 1.6,
-  median_10m: 4.6,
-  median_100m: 6.1,
-    max: 9.8,
-    min: 2.1,
-    std: 1.4,
-    median: 5.1,
-    p25: 4.2,
-    p75: 6.0
+  wasSimulated = true;
+
+  normalizedAnalysis = {
+    basic_statistics: {
+      mean_10m: 5.2,
+      mean_100m: 6.8,
+      std_10m: 1.1,
+      std_100m: 1.5,
+      median_10m: 5.0,
+      median_100m: 6.6,
+      count: 28,
+      data_availability: 100
+    },
+    capacity_factor: {
+      capacity_factor_10m: 0.23,
+      capacity_factor_100m: 0.35
+    },
+    power_density: {
+      mean_power_density: 180.5,
+      max_power_density: 450.2,
+      air_density_used: 1.225,
+      classification: 'Aceptable',
+      median_power_density: 165.0
+    },
+    turbulence_analysis: {
+      turbulence_intensity_10m: 0.11,
+      turbulence_intensity_100m: 0.09
+    },
+    overall_assessment: {
+      viability_level: 'Alto',
+      viability_score: 78,
+      recommendation: 'Ubicación prioritaria recomendada',
+      summary: 'Condiciones simuladas adecuadas para pruebas.'
+    },
+    weibull_analysis: {
+      histogram_data: Array(10).fill(0).map((_, i) => ({
+        speed_bin: i + 1,
+        frequency: Math.floor(Math.random() * 10 + 5)
+      }))
+    },
+    wind_rose: {
+      data: Array(8).fill(0).map((_, i) => ({
+        direction: ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][i],
+        frequency: Math.random() * 10 + 2
+      }))
+    },
+    hourly_patterns: {
+      mean_by_hour: Object.fromEntries(
+        Array(24).fill(0).map((_, i) => [i, parseFloat((3 + Math.random() * 3).toFixed(2))])
+      )
+    },
+    time_series: []
   };
-
-  normalizedAnalysis.capacity_factor = {
-    capacity_factor: 0.235,
-    annual_energy_production: 2800000,
-    classification: 'Bueno',
-    rated_power: 2000,
-    mean_power_output: 470
-  };
-
-normalizedAnalysis.power_density = {
-  mean_power_density: 180.5,
-  max_power_density: 450.2,
-  air_density_used: 1.225,
-  classification: 'Aceptable',
-  median_power_density: 165.0
-};
-
-  normalizedAnalysis.overall_assessment = {
-	viability_level: 'Alto',
-  	viability_score: 78,
-  	recommendation: 'Ubicación prioritaria recomendada',
-  	summary: 'El sitio presenta buenas condiciones de viento, baja turbulencia y un buen factor de capacidad.'
-	};
-
-  normalizedAnalysis.weibull_analysis = {
-    k: 2.2,
-    c: 6.3,
-    goodness_of_fit: 'Buena',
-    ks_statistic: 0.08,
-    histogram_data: Array(10).fill(0).map((_, i) => ({
-      speed_bin: i + 1,
-      frequency: Math.floor(Math.random() * 10 + 2)
-    }))
-  };
-
- }
-
-// ✅ INCLUIR DESPUÉS DE hourly_patterns
-
-// Datos simulados para histograma de Weibull
-normalizedAnalysis.weibull_analysis.histogram_data = Array(10).fill(0).map((_, i) => ({
-  speed_bin: i + 1,
-  frequency: Math.floor(Math.random() * 10 + 5)
-}));
-
-// Datos simulados para rosa de vientos
-normalizedAnalysis.wind_rose = {
-  data: Array(8).fill(0).map((_, i) => ({
-    direction: ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][i],
-    frequency: Math.random() * 10 + 2
-  }))
-};
-
-// Datos simulados para patrones horarios (si aún no estaba)
-normalizedAnalysis.hourly_patterns = {
-  mean_by_hour: Object.fromEntries(
-    Array(24).fill(0).map((_, i) => [i, parseFloat((3 + Math.random() * 3).toFixed(2))])
-  )
 }
 
       // Actualizar el estado con los datos normalizados
@@ -1173,6 +1149,5 @@ normalizedAnalysis.hourly_patterns = {
 }
 
 export default App;
-
 
 
