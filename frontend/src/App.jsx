@@ -525,7 +525,10 @@ function App() {
 
   // ✅ AÑADE ESTA LÍNEA AQUÍ (ANTES DEL return)
   const viability = extractViability(analysisData.analysis);
-  const chartData = prepareChartData(analysisData.analysis, analysisData.era5Data);
+  const chartData = analysisData.analysis && analysisData.era5Data
+  ? prepareChartData(analysisData.analysis, analysisData.era5Data)
+  : { timeSeries: [], weibullHistogram: [], windRose: [], hourlyPatterns: [] };
+	
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50">
       {/* Header */}
