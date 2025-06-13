@@ -67,7 +67,7 @@ const formatDateTime = (dateString, defaultText = 'Fecha inválida') => {
   }
 };
 
-// Función para normalizar la estructura de datos del análisis basada en la estructura real
+// Función para normalizar la estructura de datos del análisis basada en la estructura REAL del backend
 const normalizeAnalysisData = (rawAnalysis) => {
   console.log('Normalizing analysis data:', rawAnalysis);
   
@@ -89,7 +89,7 @@ const normalizeAnalysisData = (rawAnalysis) => {
   };
 };
 
-// Función para extraer estadísticas de la estructura real
+// Función para extraer estadísticas de la estructura REAL del backend
 const extractStatistics = (analysis) => {
   if (!analysis) return {};
   
@@ -101,24 +101,31 @@ const extractStatistics = (analysis) => {
   console.log('Extracting statistics from:', { basicStats, capacityFactor, powerDensity, weibullAnalysis });
   
   return {
-    mean_wind_speed_10m: safeNumber(basicStats.mean_wind_speed_10m),
-    mean_wind_speed_100m: safeNumber(basicStats.mean_wind_speed_100m),
-    max_wind_speed_10m: safeNumber(basicStats.max_wind_speed_10m),
-    max_wind_speed_100m: safeNumber(basicStats.max_wind_speed_100m),
-    std_wind_speed_10m: safeNumber(basicStats.std_wind_speed_10m),
-    std_wind_speed_100m: safeNumber(basicStats.std_wind_speed_100m),
-    capacity_factor_10m: safeNumber(capacityFactor.capacity_factor_10m),
-    capacity_factor_100m: safeNumber(capacityFactor.capacity_factor_100m),
-    power_density_10m: safeNumber(powerDensity.power_density_10m),
-    power_density_100m: safeNumber(powerDensity.power_density_100m),
-    weibull_k_10m: safeNumber(weibullAnalysis.k_10m),
-    weibull_c_10m: safeNumber(weibullAnalysis.c_10m),
-    weibull_k_100m: safeNumber(weibullAnalysis.k_100m),
-    weibull_c_100m: safeNumber(weibullAnalysis.c_100m)
+    // Estadísticas básicas
+    mean_wind_speed_10m: safeNumber(basicStats.mean_wind_speed_10m || basicStats.mean),
+    mean_wind_speed_100m: safeNumber(basicStats.mean_wind_speed_100m || basicStats.mean),
+    max_wind_speed_10m: safeNumber(basicStats.max_wind_speed_10m || basicStats.max),
+    max_wind_speed_100m: safeNumber(basicStats.max_wind_speed_100m || basicStats.max),
+    std_wind_speed_10m: safeNumber(basicStats.std_wind_speed_10m || basicStats.std),
+    std_wind_speed_100m: safeNumber(basicStats.std_wind_speed_100m || basicStats.std),
+    
+    // Factor de capacidad
+    capacity_factor_10m: safeNumber(capacityFactor.capacity_factor_10m || capacityFactor.value),
+    capacity_factor_100m: safeNumber(capacityFactor.capacity_factor_100m || capacityFactor.value),
+    
+    // Densidad de potencia
+    power_density_10m: safeNumber(powerDensity.power_density_10m || powerDensity.value),
+    power_density_100m: safeNumber(powerDensity.power_density_100m || powerDensity.value),
+    
+    // Parámetros de Weibull
+    weibull_k_10m: safeNumber(weibullAnalysis.k_10m || weibullAnalysis.k),
+    weibull_c_10m: safeNumber(weibullAnalysis.c_10m || weibullAnalysis.c),
+    weibull_k_100m: safeNumber(weibullAnalysis.k_100m || weibullAnalysis.k),
+    weibull_c_100m: safeNumber(weibullAnalysis.c_100m || weibullAnalysis.c)
   };
 };
 
-// Función para extraer datos de viabilidad de la estructura real
+// Función para extraer datos de viabilidad de la estructura REAL del backend
 const extractViability = (analysis) => {
   if (!analysis) return {};
   
@@ -127,10 +134,12 @@ const extractViability = (analysis) => {
   console.log('Extracting viability from:', assessment);
   
   return {
-    level: assessment.viability_level || assessment.level || 'No disponible',
-    recommendation: assessment.recommendation || assessment.message || 'Sin recomendación disponible',
-    score: safeNumber(assessment.viability_score || assessment.score),
-    summary: assessment.summary || 'Sin resumen disponible'
+    // Usar las propiedades EXACTAS que retorna el backend
+    level: assessment.viability_level || 'No disponible',
+    recommendation: assessment.viability_message || assessment.recommendation || 'Sin recomendación disponible',
+    score: safeNumber(assessment.viability_score),
+    summary: assessment.summary || 'Sin resumen disponible',
+    recommendations: safeArray(assessment.recommendations)
   };
 };
 
@@ -893,6 +902,25 @@ function App() {
                   </CardContent>
                 </Card>
 
+                {/* Recomendaciones */}
+                {viability.recommendations && viability.recommendations.length > 0 && (
+                  <Card className="lg:col-span-2">
+                    <CardHeader>
+                      <CardTitle>Recomendaciones</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-2">
+                        {viability.recommendations.map((recommendation, index) => (
+                          <li key={index} className="flex items-start space-x-2">
+                            <span className="text-blue-600 mt-1">•</span>
+                            <span>{recommendation}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Opciones de Exportación */}
                 <Card className="lg:col-span-2">
                   <CardHeader>
@@ -943,7 +971,6 @@ function App() {
 }
 
 export default App;
-
 
 
 
