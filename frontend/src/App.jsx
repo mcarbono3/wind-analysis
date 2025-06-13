@@ -170,13 +170,13 @@ const prepareChartData = (analysis, era5Data) => {
     }
   }
 
-  // Preparar datos de histograma de Weibull con múltiples fuentes posibles
+  // Preparar datos de histograma de Weibull con múltiples fuentes posibles - PENDIENTE DE PRUEBA EN VERSION V8d
   const weibullData = safeArray(analysis.weibull_analysis?.plot_data?.x_values.map((x, i) => ({
     speed_bin: x,
     frequency: analysis.weibull_analysis.plot_data.y_values[i]
   })));
   
-  // Preparar datos de rosa de vientos
+  // Preparar datos de rosa de vientos - PENDIENTE DE PRUEBA EN VERSION V8d
   const windRoseData = safeArray(analysis.wind_rose?.data);
   
   // Preparar datos de patrones horarios
@@ -201,39 +201,6 @@ const prepareChartData = (analysis, era5Data) => {
   };
 };
   
-  // Preparar datos de patrones horarios con múltiples fuentes posibles
-  const hourlyData = [];
-  const hourlyPatterns = analysis.hourly_patterns || analysis.hourly_data || analysis.patterns || {};
-  console.log('📊 prepareChartData - hourlyPatterns keys:', Object.keys(hourlyPatterns));
-  
-  const hourlyMeans = hourlyPatterns.mean_by_hour || hourlyPatterns.hourly_means || hourlyPatterns.by_hour || {};
-  if (Object.keys(hourlyMeans).length > 0) {
-    Object.entries(hourlyMeans).forEach(([hour, speed]) => {
-      hourlyData.push({
-        hour: parseInt(hour),
-        speed: safeNumber(speed)
-      });
-    });
-  }
-  console.log('📊 prepareChartData - Hourly Patterns Data length:', hourlyData.length);
-  
-  const result = {
-    timeSeries: timeSeriesData,
-    weibullHistogram: weibullData,
-    windRose: windRoseData,
-    hourlyPatterns: hourlyData
-  };
-  
-  console.log('✅ prepareChartData - Final result summary:', {
-    timeSeriesLength: result.timeSeries.length,
-    weibullHistogramLength: result.weibullHistogram.length,
-    windRoseLength: result.windRose.length,
-    hourlyPatternsLength: result.hourlyPatterns.length
-  });
-  
-  return result;
-};
-
 // Componente para manejar la selección en el mapa
 function MapSelector({ onAreaSelect, selectedArea, isSelecting, setIsSelecting }) {
   const [startPoint, setStartPoint] = useState(null);
@@ -1011,6 +978,7 @@ function App() {
 }
 
 export default App;
+
 
 
 
