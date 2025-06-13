@@ -795,14 +795,17 @@ function App() {
                     <CardTitle>Evolución Temporal del Viento (100m)</CardTitle>
                   </CardHeader>
                   <CardContent>
-		{chartData.timeSeries && chartData.timeSeries.length > 0 ? (
- 		   <ResponsiveContainer width="100%" height={300}>
-                       <LineChart data={chartData.timeSeries}>
-                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="time" tickFormatter={(tick) => new Date(tick).toLocaleDateString()} />
-                	      <YAxis />
-                       <Tooltip labelFormatter={(label) => new Date(label).toLocaleString()} />
-                      <Line type="monotone" dataKey="speed" stroke="#8884d8" name="Velocidad del Viento (m/s)" dot={false} />
+			{analysisData.era5Data?.wind_speed_100m?.length > 0 && analysisData.era5Data?.timestamps?.length > 0 ? (
+  		       <ResponsiveContainer width="100%" height={300}>
+  		       <LineChart data={analysisData.era5Data.wind_speed_100m.map((speed, index) => ({
+     		        time: analysisData.era5Data.timestamps[index],
+     		        speed
+    		       }))}>
+    		   	 <CartesianGrid strokeDasharray="3 3" />
+    		  	<XAxis dataKey="time" tickFormatter={(tick) => new Date(tick).toLocaleString()} />
+     			 <YAxis />
+     		 	<Tooltip labelFormatter={(label) => new Date(label).toLocaleString()} />
+     			 <Line type="monotone" dataKey="speed" stroke="#8884d8" dot={false} name="Velocidad (m/s)" />
                       </LineChart>
                       </ResponsiveContainer>
                     ) : (
