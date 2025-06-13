@@ -89,7 +89,7 @@ const normalizeAnalysisData = (rawAnalysis) => {
   };
 };
 
-// Función para extraer estadísticas de la estructura REAL del backend
+// Función para extraer estadísticas de la estructura REAL del backend - PROBADO Y FUNCIONA
 const extractStatistics = (analysis) => {
   if (!analysis) return {};
   
@@ -131,59 +131,33 @@ const extractStatistics = (analysis) => {
 };
 
 
-// Función para extraer datos de viabilidad - COMPLETAMENTE REESCRITA
+// Función para extraer datos de viabilidad - PENDIENTE DE PRUEBA EN VERSION V8d
 const extractViability = (analysis) => {
-  console.log('🎯 extractViability - Input analysis:', analysis);
+  if (!analysis) return {};
   
-  if (!analysis || typeof analysis !== 'object') {
-    console.log('❌ extractViability - Analysis is null or not an object');
-    return {
-      level: 'No disponible',
-      recommendation: 'Sin recomendación disponible',
-      score: 0,
-      summary: 'Sin resumen disponible'
-    };
-  }
-
-  const assessment = analysis.overall_assessment || {};
-  console.log('🎯 extractViability - assessment keys:', Object.keys(assessment));
-  console.log('🎯 extractViability - assessment values:', assessment);
+  const assessment = safeGet(analysis, 'overall_assessment', {});
   
-  const viabilityData = {
-    level: assessment.viability_level || assessment.level || assessment.rating || assessment.classification || 'No disponible',
-    recommendation: assessment.recommendation || assessment.message || assessment.advice || assessment.conclusion || 'Sin recomendación disponible',
-    score: safeNumber(assessment.viability_score || assessment.score || assessment.rating_score || assessment.points),
-    summary: assessment.summary || assessment.description || assessment.overview || 'Sin resumen disponible'
+  console.log('Extracting viability from:', assessment);
+  
+  return {
+    // Usar las propiedades EXACTAS que retorna el backend
+    level: assessment.viability_level || 'No disponible',
+    recommendation: assessment.viability_message || assessment.recommendation || 'Sin recomendación disponible',
+    score: safeNumber(assessment.viability_score),
+    summary: assessment.summary || 'Sin resumen disponible',
+    recommendations: safeArray(assessment.recommendations)
   };
-  
-  console.log('✅ extractViability - Final extracted viability:', viabilityData);
-  return viabilityData;
 };
 
-// Función para preparar datos de gráficos - COMPLETAMENTE REESCRITA
+// Función para preparar datos de gráficos - PENDIENTE DE PRUEBA EN VERSION V8d
 const prepareChartData = (analysis, era5Data) => {
-  console.log('📊 prepareChartData - Input analysis:', analysis);
-  console.log('📊 prepareChartData - Input era5Data keys:', era5Data ? Object.keys(era5Data) : 'null');
-
-  if (!analysis || typeof analysis !== 'object' || !era5Data || typeof era5Data !== 'object') {
-    console.log('❌ prepareChartData - Invalid input data');
-    return {
-      timeSeries: [],
-      weibullHistogram: [],
-      windRose: [],
-      hourlyPatterns: []
-    };
-  }
-
-  // Preparar datos de serie temporal con múltiples fuentes posibles
-  const windSpeeds100m = safeArray(era5Data.wind_speed_100m || era5Data.wind_100m || era5Data.speed_100m);
-  const timestamps = safeArray(era5Data.timestamps || era5Data.time || era5Data.dates);
+  if (!analysis || !era5Data) return { timeSeries: [], weibullHistogram: [], windRose: [], hourlyPatterns: [] };
   
-  console.log('📊 prepareChartData - windSpeeds100m length:', windSpeeds100m.length);
-  console.log('📊 prepareChartData - timestamps length:', timestamps.length);
-  console.log('📊 prepareChartData - windSpeeds100m sample:', windSpeeds100m.slice(0, 5));
-  console.log('📊 prepareChartData - timestamps sample:', timestamps.slice(0, 5));
+  const timeSeries = safeArray(analysis.time_series);
+  const windSpeeds100m = safeArray(era5Data.wind_speed_100m);
+  const timestamps = safeArray(era5Data.timestamps);
   
+  // Preparar datos de serie temporal
   const timeSeriesData = [];
   const minLength = Math.min(windSpeeds100m.length, timestamps.length);
   
@@ -195,25 +169,37 @@ const prepareChartData = (analysis, era5Data) => {
       });
     }
   }
-  console.log('📊 prepareChartData - TimeSeries Data length:', timeSeriesData.length);
 
   // Preparar datos de histograma de Weibull con múltiples fuentes posibles
-  const weibullData = safeArray(
-    analysis.weibull_analysis?.histogram_data || 
-    analysis.weibull_analysis?.histogram || 
-    analysis.weibull_analysis?.distribution ||
-    analysis.histogram_data
-  );
-  console.log('📊 prepareChartData - Weibull Histogram Data length:', weibullData.length);
+  const weibullData = safeArray(analysis.weibull_analysis?.plot_data?.x_values.map((x, i) => ({
+    speed_bin: x,
+    frequency: analysis.weibull_analysis.plot_data.y_values[i]
+  })));
   
-  // Preparar datos de rosa de vientos con múltiples fuentes posibles
-  const windRoseData = safeArray(
-    analysis.wind_rose?.data || 
-    analysis.wind_rose?.distribution ||
-    analysis.wind_direction?.data ||
-    analysis.rose_data
-  );
-  console.log('📊 prepareChartData - Wind Rose Data length:', windRoseData.length);
+  // Preparar datos de rosa de vientos
+  const windRoseData = safeArray(analysis.wind_rose?.data);
+  
+  // Preparar datos de patrones horarios
+  const hourlyData = [];
+  const hourlyPatterns = safeGet(analysis, 'hourly_patterns', {});
+  if (hourlyPatterns.mean_by_hour) {
+    Object.entries(hourlyPatterns.mean_by_hour).forEach(([hour, speed]) => {
+      hourlyData.push({
+        hour: parseInt(hour),
+        speed: safeNumber(speed)
+      });
+    });
+  }
+  
+  console.log('Prepared chart data:', { timeSeriesData, weibullData, windRoseData, hourlyData });
+  
+  return {
+    timeSeries: timeSeriesData,
+    weibullHistogram: weibullData,
+    windRose: windRoseData,
+    hourlyPatterns: hourlyData
+  };
+};
   
   // Preparar datos de patrones horarios con múltiples fuentes posibles
   const hourlyData = [];
@@ -1025,8 +1011,6 @@ function App() {
 }
 
 export default App;
-
-
 
 
 
