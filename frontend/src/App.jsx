@@ -98,8 +98,9 @@ const extractStatistics = (analysis) => {
   const capacityFactor = safeGet(analysis, 'capacity_factor', {});
   const powerDensity = safeGet(analysis, 'power_density', {});
   const weibullAnalysis = safeGet(analysis, 'weibull_analysis', {});
+  const turbulenceAnalysis = safeGet(analysis, 'turbulence_analysis', {});
   
-  console.log('Extracting statistics from:', { basicStats, capacityFactor, powerDensity, weibullAnalysis });
+  console.log('Extracting statistics from:', { basicStats, capacityFactor, powerDensity, weibullAnalysis, turbulenceAnalysis });
   
   return {
     // Estadísticas básicas
@@ -122,7 +123,11 @@ const extractStatistics = (analysis) => {
     weibull_k_10m: safeNumber(weibullAnalysis.k_10m || weibullAnalysis.k),
     weibull_c_10m: safeNumber(weibullAnalysis.c_10m || weibullAnalysis.c),
     weibull_k_100m: safeNumber(weibullAnalysis.k_100m || weibullAnalysis.k),
-    weibull_c_100m: safeNumber(weibullAnalysis.c_100m || weibullAnalysis.c)
+    weibull_c_100m: safeNumber(weibullAnalysis.c_100m || weibullAnalysis.c),
+
+    // Intensidad de Turbulencia
+    turbulence_intensity_10m: safeNumber(turbulenceAnalysis.turbulence_intensity_10m || turbulenceAnalysis.intensity_10m),
+    turbulence_intensity_100m: safeNumber(turbulenceAnalysis.turbulence_intensity_100m || turbulenceAnalysis.intensity_100m)
   };
 };
 
@@ -610,6 +615,8 @@ function App() {
                       <p><strong>Parámetro c de Weibull (10m):</strong> {formatNumber(statistics.weibull_c_10m)} m/s</p>
                       <p><strong>Parámetro k de Weibull (100m):</strong> {formatNumber(statistics.weibull_k_100m)}</p>
                       <p><strong>Parámetro c de Weibull (100m):</strong> {formatNumber(statistics.weibull_c_100m)} m/s</p>
+                      <p><strong>Intensidad de Turbulencia (10m):</strong> {formatPercentage(statistics.turbulence_intensity_10m)}</p>
+                      <p><strong>Intensidad de Turbulencia (100m):</strong> {formatPercentage(statistics.turbulence_intensity_100m)}</p>
                     </CardContent>
                   </Card>
 
@@ -731,6 +738,7 @@ function App() {
 }
 
 export default App;
+
 
 
 
