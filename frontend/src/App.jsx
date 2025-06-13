@@ -551,10 +551,6 @@ if (!isValidArea(selectedArea)) {
       }
 
       // Normalizar los datos del análisis
-      const rawAnalysis = analysisResponse.data.analysis;
-      console.log('🔄 Raw analysis before normalization:', rawAnalysis);
-      const normalizedAnalysis = normalizeAnalysisData(rawAnalysis);
-
      const rawAnalysis = analysisResponse.data;
 let normalizedAnalysis = normalizeAnalysisData(rawAnalysis);
 let wasSimulated = false;
