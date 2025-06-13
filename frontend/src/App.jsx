@@ -420,6 +420,12 @@ function App() {
       if (!era5Data.wind_speed_10m || !Array.isArray(era5Data.wind_speed_10m) || era5Data.wind_speed_10m.length === 0) {
         throw new Error('Los datos de viento recibidos no tienen el formato esperado');
       }
+    
+     // ✅ Agrega esta llamada al análisis
+     const analysisResponse = await axios.post(`${API_BASE_URL}/wind-analysis`, {
+      wind_speeds: era5Data.wind_speed_10m.flat(),
+      air_density: 1.225
+     });
 
       const analysisResult = analysisResponse.data.analysis || {};
       setAnalysisData(prevData => ({
