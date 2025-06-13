@@ -738,7 +738,7 @@ function App() {
   		  <p className="font-bold">Datos de viabilidad no disponibles</p>
  		 </div>
 		)}
-                    <p className="text-sm text-gray-700"><strong>Velocidad Promedio del Viento (100m):</strong> {formatNumber(extractStatistics(analysisData.analysis).mean_wind_speed_				100m)} m/s</p>
+                    <p className="text-sm text-gray-700"><strong>Velocidad Promedio del Viento (100m):</strong> {formatNumber(extractStatistics(analysisData.analysis).mean_wind_speed_100m)} m/s</p>
                     <p className="text-sm text-gray-700"><strong>Nivel de Viabilidad:</strong> {viability.level || 'No disponible'}</p>
                   </CardContent>
                 </Card>
