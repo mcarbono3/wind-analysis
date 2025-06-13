@@ -70,7 +70,6 @@ const formatDateTime = (dateString, defaultText = 'Fecha inválida') => {
 // Función para normalizar la estructura de datos del análisis basada en la estructura REAL del backend
 const normalizeAnalysisData = (rawAnalysis) => {
   console.log('Normalizing analysis data:', rawAnalysis);
-  console.log('Type of rawAnalysis:', typeof rawAnalysis);
   
   if (!rawAnalysis) {
     return null;
@@ -98,10 +97,10 @@ const extractStatistics = (analysis) => {
   const capacityFactor = safeGet(analysis, 'capacity_factor', {});
   const powerDensity = safeGet(analysis, 'power_density', {});
   const weibullAnalysis = safeGet(analysis, 'weibull_analysis', {});
-  const turbulenceAnalysis = safeGet(analysis, 'turbulence_analysis', {});
-  
-  console.log('Extracting statistics from:', { basicStats, capacityFactor, powerDensity, weibullAnalysis, turbulenceAnalysis });
-  
+  const turbulenceAnalysis = safeGet(analysis, 'turbulence_analysis', {}); // Added this line
+
+  console.log('Extracting statistics from:', { basicStats, capacityFactor, powerDensity, weibullAnalysis, turbulenceAnalysis }); // Updated log
+
   return {
     // Estadísticas básicas
     mean_wind_speed_10m: safeNumber(basicStats.mean_wind_speed_10m || basicStats.mean),
@@ -112,12 +111,12 @@ const extractStatistics = (analysis) => {
     std_wind_speed_100m: safeNumber(basicStats.std_wind_speed_100m || basicStats.std),
     
     // Factor de capacidad
-    capacity_factor_10m: safeNumber(capacityFactor.capacity_factor_10m || capacityFactor.value),
-    capacity_factor_100m: safeNumber(capacityFactor.capacity_factor_100m || capacityFactor.value),
+    capacity_factor_10m: safeNumber(capacityFactor.capacity_factor),
+    capacity_factor_100m: safeNumber(capacityFactor.capacity_factor),
     
     // Densidad de potencia
-    power_density_10m: safeNumber(powerDensity.power_density_10m || powerDensity.value),
-    power_density_100m: safeNumber(powerDensity.power_density_100m || powerDensity.value),
+    power_density_10m: safeNumber(powerDensity.mean_power_density),
+    power_density_100m: safeNumber(powerDensity.mean_power_density),
     
     // Parámetros de Weibull
     weibull_k_10m: safeNumber(weibullAnalysis.k_10m || weibullAnalysis.k),
@@ -126,8 +125,8 @@ const extractStatistics = (analysis) => {
     weibull_c_100m: safeNumber(weibullAnalysis.c_100m || weibullAnalysis.c),
 
     // Intensidad de Turbulencia
-    turbulence_intensity_10m: safeNumber(turbulenceAnalysis.turbulence_intensity_10m || turbulenceAnalysis.intensity_10m),
-    turbulence_intensity_100m: safeNumber(turbulenceAnalysis.turbulence_intensity_100m || turbulenceAnalysis.intensity_100m)
+    turbulence_intensity_10m: safeNumber(turbulenceAnalysis.overall?.turbulence_intensity),
+    turbulence_intensity_100m: safeNumber(turbulenceAnalysis.overall?.turbulence_intensity)
   };
 };
 
@@ -171,7 +170,10 @@ const prepareChartData = (analysis, era5Data) => {
   }
   
   // Preparar datos de histograma de Weibull
-  const weibullData = safeArray(analysis.weibull_analysis?.histogram_data);
+  const weibullData = safeArray(analysis.weibull_analysis?.plot_data?.x_values.map((x, i) => ({
+    speed_bin: x,
+    frequency: analysis.weibull_analysis.plot_data.y_values[i]
+  })));
   
   // Preparar datos de rosa de vientos
   const windRoseData = safeArray(analysis.wind_rose?.data);
@@ -189,8 +191,6 @@ const prepareChartData = (analysis, era5Data) => {
   }
   
   console.log('Prepared chart data:', { timeSeriesData, weibullData, windRoseData, hourlyData });
-  console.log('Raw analysis data for charts:', analysis);
-  console.log('ERA5 data for charts:', era5Data);
   
   return {
     timeSeries: timeSeriesData,
@@ -452,41 +452,36 @@ function App() {
         },
         era5Data: era5Data
       });
-      console.log('Final analysisData state after setting:', { analysis: normalizedAnalysis, location: { bounds: selectedArea, center: [(selectedArea[0][0] + selectedArea[1][0]) / 2, (selectedArea[0][1] + selectedArea[1][1]) / 2] }, era5Data: era5Data });
+      console.log('Final analysisData state after setting:', {
+        analysis: normalizedAnalysis,
+        location: {
+          bounds: selectedArea,
+          center: [
+            (selectedArea[0][0] + selectedArea[1][0]) / 2,
+            (selectedArea[0][1] + selectedArea[1][1]) / 2
+          ]
+        },
+        era5Data: era5Data
+      }); // Added log
+
       setActiveTab('results');
-      console.log('Analysis completed successfully. Navigating to results tab. Active tab set to:', 'results');
+      console.log('Analysis completed successfully. Navigating to results tab.');
 
     } catch (err) {
       console.error('Error during analysis:', err);
-      setError(err.message || 'Error al realizar el análisis. Por favor, inténtalo de nuevo.');
+      setError(err.message || 'Error al realizar el análisis. Inténtalo de nuevo.');
     } finally {
       setLoading(false);
-      console.log('Analysis finished. Loading set to false.');
+      console.log('Analysis process finished. Loading set to false.');
     }
   };
-
-  const handleDateChange = (e) => {
-    setDateRange({
-      ...dateRange,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  const { timeSeries, weibullHistogram, windRose, hourlyPatterns } = prepareChartData(analysisData.analysis, analysisData.era5Data);
-  const statistics = extractStatistics(analysisData.analysis);
-  const viability = extractViability(analysisData.analysis);
-
-  // Colores para la rosa de vientos
-  const windRoseColors = [
-    '#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#A28DFF', '#FF69B4', '#8A2BE2', '#7FFF00',
-    '#DC143C', '#00CED1', '#FFD700', '#ADFF2F', '#FF4500', '#BA55D3', '#00FA9A', '#FF6347'
-  ];
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center p-4">
       <Card className="w-full max-w-6xl shadow-lg">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-3xl font-bold text-center w-full">Análisis Eólico Caribe - Colombia</CardTitle>
+          <CardTitle className="text-2xl font-bold">Análisis de Recurso Eólico</CardTitle>
+          <Wind className="h-8 w-8 text-blue-600" />
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -496,10 +491,10 @@ function App() {
               <TabsTrigger value="results">Resultados</TabsTrigger>
             </TabsList>
             <TabsContent value="map" className="mt-4">
-              <div className="h-[500px] w-full rounded-md overflow-hidden mb-4 relative">
+              <div className="h-[500px] w-full rounded-md overflow-hidden relative">
                 <MapContainer
-                  center={[10.9685, -74.7813]} // Centro de Barranquilla, Colombia
-                  zoom={6}
+                  center={caribbeanBounds.center ? [caribbeanBounds.center.lat, caribbeanBounds.center.lon] : [10.46, -73.26]}
+                  zoom={caribbeanBounds.center ? 6 : 7}
                   scrollWheelZoom={true}
                   className="h-full w-full"
                 >
@@ -514,25 +509,34 @@ function App() {
                     setIsSelecting={setIsMapSelecting}
                   />
                 </MapContainer>
-                {isMapSelecting && (
-                  <div className="absolute inset-0 bg-black bg-opacity-25 flex items-center justify-center text-white text-xl font-bold z-10">
-                    Arrastra para seleccionar un área
-                  </div>
-                )}
-              </div>
-              <div className="flex justify-between items-center mt-2">
-                <Button onClick={() => setIsMapSelecting(true)} disabled={isMapSelecting}>
+                <Button
+                  onClick={() => {
+                    setIsMapSelecting(true);
+                    console.log('Initiating map selection, isMapSelecting set to true');
+                  }}
+                  className="absolute top-2 left-2 z-[1000]"
+                >
                   <MapPin className="mr-2 h-4 w-4" /> Iniciar Selección
                 </Button>
-                <Button onClick={handleClearSelection} variant="outline">
-                  <XCircle className="mr-2 h-4 w-4" /> Limpiar Selección
-                </Button>
+                {selectedArea && (
+                  <Button
+                    onClick={handleClearSelection}
+                    className="absolute top-2 left-40 z-[1000] bg-red-500 hover:bg-red-600"
+                  >
+                    <XCircle className="mr-2 h-4 w-4" /> Limpiar Selección
+                  </Button>
+                )}
               </div>
               {selectedArea && (
                 <Alert className="mt-4">
                   <AlertDescription>
-                    Área seleccionada: Latitud de {formatNumber(selectedArea[0][0])} a {formatNumber(selectedArea[1][0])}, Longitud de {formatNumber(selectedArea[0][1])} a {formatNumber(selectedArea[1][1])}.
+                    Área seleccionada: Latitudes {formatNumber(selectedArea[0][0])} a {formatNumber(selectedArea[1][0])}, Longitudes {formatNumber(selectedArea[0][1])} a {formatNumber(selectedArea[1][1])}.
                   </AlertDescription>
+                </Alert>
+              )}
+              {error && (
+                <Alert variant="destructive" className="mt-4">
+                  <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
             </TabsContent>
@@ -542,25 +546,23 @@ function App() {
                   <Label htmlFor="startDate">Fecha de Inicio</Label>
                   <Input
                     id="startDate"
-                    name="startDate"
                     type="date"
                     value={dateRange.startDate}
-                    onChange={handleDateChange}
+                    onChange={(e) => setDateRange({ ...dateRange, startDate: e.target.value })}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="endDate">Fecha de Fin</Label>
+                  <Label htmlFor="endDate">Fecha Fin</Label>
                   <Input
                     id="endDate"
-                    name="endDate"
                     type="date"
                     value={dateRange.endDate}
-                    onChange={handleDateChange}
+                    onChange={(e) => setDateRange({ ...dateRange, endDate: e.target.value })}
                   />
                 </div>
               </div>
-              <Button onClick={handleAnalysis} className="w-full" disabled={loading || !selectedArea}>
-                {loading ? 'Analizando...' : <><BarChart3 className="mr-2 h-4 w-4" /> Iniciar Análisis Eólico</>}
+              <Button onClick={handleAnalysis} disabled={loading || !selectedArea}>
+                {loading ? 'Analizando...' : 'Iniciar Análisis Eólico'}
               </Button>
               {error && (
                 <Alert variant="destructive" className="mt-4">
@@ -569,25 +571,46 @@ function App() {
               )}
             </TabsContent>
             <TabsContent value="results" className="mt-4 space-y-6">
-              {loading && <Alert><AlertDescription>Cargando resultados del análisis...</AlertDescription></Alert>}
+              {loading && <Alert><AlertDescription>Cargando resultados...</AlertDescription></Alert>}
               {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
 
-              {!loading && !error && analysisData.analysis && (
-                <div className="space-y-6">
+              {analysisData.analysis && !loading && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Sección de Estadísticas Principales */}
                   <Card>
                     <CardHeader>
-                      <CardTitle className="flex items-center"><TrendingUp className="mr-2" /> Evaluación General del Recurso Eólico</CardTitle>
+                      <CardTitle className="flex items-center"><BarChart3 className="mr-2" /> Estadísticas Principales</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2">
-                      <p><strong>Nivel de Viabilidad:</strong> <Badge variant="secondary">{viability.level}</Badge></p>
-                      <p><strong>Puntuación de Viabilidad:</strong> {formatNumber(viability.score, 2)}</p>
-                      <p><strong>Resumen:</strong> {viability.summary}</p>
-                      <p><strong>Recomendación:</strong> {viability.recommendation}</p>
-                      {viability.recommendations && viability.recommendations.length > 0 && (
+                      <p><strong>Velocidad Media del Viento (10m):</strong> {formatNumber(extractStatistics(analysisData.analysis).mean_wind_speed_10m)} m/s</p>
+                      <p><strong>Velocidad Media del Viento (100m):</strong> {formatNumber(extractStatistics(analysisData.analysis).mean_wind_speed_100m)} m/s</p>
+                      <p><strong>Velocidad Máxima del Viento (10m):</strong> {formatNumber(extractStatistics(analysisData.analysis).max_wind_speed_10m)} m/s</p>
+                      <p><strong>Velocidad Máxima del Viento (100m):</strong> {formatNumber(extractStatistics(analysisData.analysis).max_wind_speed_100m)} m/s</p>
+                      <p><strong>Desviación Estándar (10m):</strong> {formatNumber(extractStatistics(analysisData.analysis).std_wind_speed_10m)} m/s</p>
+                      <p><strong>Desviación Estándar (100m):</strong> {formatNumber(extractStatistics(analysisData.analysis).std_wind_speed_100m)} m/s</p>
+                      <p><strong>Densidad de Potencia (10m):</strong> {formatNumber(extractStatistics(analysisData.analysis).power_density_10m)} W/m²</p>
+                      <p><strong>Densidad de Potencia (100m):</strong> {formatNumber(extractStatistics(analysisData.analysis).power_density_100m)} W/m²</p>
+                      <p><strong>Factor de Capacidad (10m):</strong> {formatPercentage(extractStatistics(analysisData.analysis).capacity_factor_10m)}</p>
+                      <p><strong>Factor de Capacidad (100m):</strong> {formatPercentage(extractStatistics(analysisData.analysis).capacity_factor_100m)}</p>
+                      <p><strong>Intensidad de Turbulencia (10m):</strong> {formatPercentage(extractStatistics(analysisData.analysis).turbulence_intensity_10m)}</p>
+                      <p><strong>Intensidad de Turbulencia (100m):</strong> {formatPercentage(extractStatistics(analysisData.analysis).turbulence_intensity_100m)}</p>
+                    </CardContent>
+                  </Card>
+
+                  {/* Sección de Viabilidad */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center"><TrendingUp className="mr-2" /> Análisis de Viabilidad</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <p><strong>Nivel de Viabilidad:</strong> <Badge>{extractViability(analysisData.analysis).level}</Badge></p>
+                      <p><strong>Puntuación:</strong> {formatNumber(extractViability(analysisData.analysis).score)}</p>
+                      <p><strong>Recomendación:</strong> {extractViability(analysisData.analysis).recommendation}</p>
+                      {extractViability(analysisData.analysis).recommendations.length > 0 && (
                         <div>
-                          <strong>Recomendaciones Adicionales:</strong>
+                          <p><strong>Recomendaciones Adicionales:</strong></p>
                           <ul className="list-disc list-inside">
-                            {viability.recommendations.map((rec, index) => (
+                            {extractViability(analysisData.analysis).recommendations.map((rec, index) => (
                               <li key={index}>{rec}</li>
                             ))}
                           </ul>
@@ -596,42 +619,19 @@ function App() {
                     </CardContent>
                   </Card>
 
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center"><BarChart3 className="mr-2" /> Estadísticas Clave</CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      <p><strong>Velocidad Media del Viento (10m):</strong> {formatNumber(statistics.mean_wind_speed_10m)} m/s</p>
-                      <p><strong>Velocidad Media del Viento (100m):</strong> {formatNumber(statistics.mean_wind_speed_100m)} m/s</p>
-                      <p><strong>Velocidad Máx. del Viento (10m):</strong> {formatNumber(statistics.max_wind_speed_10m)} m/s</p>
-                      <p><strong>Velocidad Máx. del Viento (100m):</strong> {formatNumber(statistics.max_wind_speed_100m)} m/s</p>
-                      <p><strong>Desviación Estándar (10m):</strong> {formatNumber(statistics.std_wind_speed_10m)} m/s</p>
-                      <p><strong>Desviación Estándar (100m):</strong> {formatNumber(statistics.std_wind_speed_100m)} m/s</p>
-                      <p><strong>Factor de Capacidad (10m):</strong> {formatPercentage(statistics.capacity_factor_10m)}</p>
-                      <p><strong>Factor de Capacidad (100m):</strong> {formatPercentage(statistics.capacity_factor_100m)}</p>
-                      <p><strong>Densidad de Potencia (10m):</strong> {formatNumber(statistics.power_density_10m)} W/m²</p>
-                      <p><strong>Densidad de Potencia (100m):</strong> {formatNumber(statistics.power_density_100m)} W/m²</p>
-                      <p><strong>Parámetro k de Weibull (10m):</strong> {formatNumber(statistics.weibull_k_10m)}</p>
-                      <p><strong>Parámetro c de Weibull (10m):</strong> {formatNumber(statistics.weibull_c_10m)} m/s</p>
-                      <p><strong>Parámetro k de Weibull (100m):</strong> {formatNumber(statistics.weibull_k_100m)}</p>
-                      <p><strong>Parámetro c de Weibull (100m):</strong> {formatNumber(statistics.weibull_c_100m)} m/s</p>
-                      <p><strong>Intensidad de Turbulencia (10m):</strong> {formatPercentage(statistics.turbulence_intensity_10m)}</p>
-                      <p><strong>Intensidad de Turbulencia (100m):</strong> {formatPercentage(statistics.turbulence_intensity_100m)}</p>
-                    </CardContent>
-                  </Card>
-
-                  {timeSeries && timeSeries.length > 0 && (
-                    <Card>
+                  {/* Gráficos */}
+                  {prepareChartData(analysisData.analysis, analysisData.era5Data).timeSeries.length > 0 && (
+                    <Card className="lg:col-span-2">
                       <CardHeader>
-                        <CardTitle>Serie Temporal de Velocidad del Viento (100m)</CardTitle>
+                        <CardTitle>Evolución Temporal del Viento (100m)</CardTitle>
                       </CardHeader>
-                      <CardContent>
-                        <ResponsiveContainer width="100%" height={300}>
-                          <LineChart data={timeSeries}>
+                      <CardContent className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={prepareChartData(analysisData.analysis, analysisData.era5Data).timeSeries}>
                             <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="time" tickFormatter={formatDateTime} />
-                            <YAxis label={{ value: 'Velocidad del Viento (m/s)', angle: -90, position: 'insideLeft' }} />
-                            <Tooltip formatter={(value) => `${formatNumber(value)} m/s`} labelFormatter={(label) => `Tiempo: ${formatDateTime(label)}`} />
+                            <XAxis dataKey="time" tickFormatter={(tick) => new Date(tick).toLocaleDateString()} />
+                            <YAxis label={{ value: 'Velocidad (m/s)', angle: -90, position: 'insideLeft' }} />
+                            <Tooltip labelFormatter={(label) => new Date(label).toLocaleString()} />
                             <Line type="monotone" dataKey="speed" stroke="#8884d8" dot={false} />
                           </LineChart>
                         </ResponsiveContainer>
@@ -639,73 +639,50 @@ function App() {
                     </Card>
                   )}
 
-                  {weibullHistogram && weibullHistogram.length > 0 && (
+                  {prepareChartData(analysisData.analysis, analysisData.era5Data).weibullHistogram.length > 0 && (
                     <Card>
                       <CardHeader>
-                        <CardTitle>Distribución de Weibull (100m)</CardTitle>
+                        <CardTitle>Histograma de Velocidad del Viento con Ajuste Weibull</CardTitle>
                       </CardHeader>
-                      <CardContent>
-                        <ResponsiveContainer width="100%" height={300}>
-                          <BarChart data={weibullHistogram}>
+                      <CardContent className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={prepareChartData(analysisData.analysis, analysisData.era5Data).weibullHistogram}>
                             <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="speed_bin" label={{ value: 'Velocidad del Viento (m/s)', position: 'insideBottom', offset: 0 }} />
+                            <XAxis dataKey="speed_bin" />
                             <YAxis label={{ value: 'Frecuencia', angle: -90, position: 'insideLeft' }} />
-                            <Tooltip formatter={(value) => `${formatNumber(value)}%`} />
+                            <Tooltip />
                             <Bar dataKey="frequency" fill="#82ca9d" />
+                            <Line type="monotone" dataKey="weibull_pdf" stroke="#ff7300" dot={false} />
                           </BarChart>
                         </ResponsiveContainer>
                       </CardContent>
                     </Card>
                   )}
 
-                  {windRose && windRose.length > 0 && (
+                  {prepareChartData(analysisData.analysis, analysisData.era5Data).windRose.length > 0 && (
                     <Card>
                       <CardHeader>
-                        <CardTitle>Rosa de los Vientos (100m)</CardTitle>
+                        <CardTitle>Rosa de los Vientos</CardTitle>
                       </CardHeader>
-                      <CardContent>
-                        <ResponsiveContainer width="100%" height={400}>
-                          <PieChart>
-                            <Pie
-                              data={windRose}
-                              dataKey="frequency"
-                              nameKey="direction"
-                              cx="50%"
-                              cy="50%"
-                              outerRadius={120}
-                              fill="#8884d8"
-                              label
-                            >
-                              {windRose.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={windRoseColors[index % windRoseColors.length]} />
-                              ))}
-                            </Pie>
-                            <Tooltip formatter={(value) => `${formatNumber(value)}%`} />
-                          </PieChart>
-                        </ResponsiveContainer>
-                        <div className="flex flex-wrap justify-center gap-2 mt-4">
-                          {windRose.map((entry, index) => (
-                            <Badge key={index} style={{ backgroundColor: windRoseColors[index % windRoseColors.length] }}>
-                              {entry.direction}: {formatNumber(entry.frequency)}%
-                            </Badge>
-                          ))}
-                        </div>
+                      <CardContent className="h-[300px]">
+                        {/* La implementación de la rosa de los vientos con Recharts es compleja y puede requerir un componente personalizado o una librería externa. */}
+                        <p className="text-center text-gray-500">Gráfico de Rosa de los Vientos no implementado con Recharts directamente. Se requiere un componente personalizado.</p>
                       </CardContent>
                     </Card>
                   )}
 
-                  {hourlyPatterns && hourlyPatterns.length > 0 && (
+                  {prepareChartData(analysisData.analysis, analysisData.era5Data).hourlyPatterns.length > 0 && (
                     <Card>
                       <CardHeader>
-                        <CardTitle>Patrones Horarios de Velocidad del Viento (100m)</CardTitle>
+                        <CardTitle>Patrones Horarios de Velocidad del Viento</CardTitle>
                       </CardHeader>
-                      <CardContent>
-                        <ResponsiveContainer width="100%" height={300}>
-                          <LineChart data={hourlyPatterns}>
+                      <CardContent className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={prepareChartData(analysisData.analysis, analysisData.era5Data).hourlyPatterns}>
                             <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="hour" label={{ value: 'Hora del Día', position: 'insideBottom', offset: 0 }} />
-                            <YAxis label={{ value: 'Velocidad Media del Viento (m/s)', angle: -90, position: 'insideLeft' }} />
-                            <Tooltip formatter={(value) => `${formatNumber(value)} m/s`} />
+                            <XAxis dataKey="hour" />
+                            <YAxis label={{ value: 'Velocidad Media (m/s)', angle: -90, position: 'insideLeft' }} />
+                            <Tooltip />
                             <Line type="monotone" dataKey="speed" stroke="#8884d8" />
                           </LineChart>
                         </ResponsiveContainer>
@@ -713,21 +690,12 @@ function App() {
                     </Card>
                   )}
 
-                  <div className="flex justify-end space-x-2 mt-4">
-                    <Button onClick={() => console.log('Exportar a CSV')} disabled>
-                      <Download className="mr-2 h-4 w-4" /> Exportar CSV
-                    </Button>
-                    <Button onClick={() => console.log('Exportar a PDF')} disabled>
-                      <Download className="mr-2 h-4 w-4" /> Exportar PDF
-                    </Button>
+                  {/* Botones de Exportación */}
+                  <div className="lg:col-span-2 flex justify-end space-x-4">
+                    <Button disabled><Download className="mr-2 h-4 w-4" /> Exportar CSV</Button>
+                    <Button disabled><Download className="mr-2 h-4 w-4" /> Exportar PDF</Button>
                   </div>
                 </div>
-              )}
-
-              {!loading && !error && !analysisData.analysis && (
-                <Alert>
-                  <AlertDescription>No hay resultados de análisis para mostrar. Por favor, selecciona un área y ejecuta el análisis.</AlertDescription>
-                </Alert>
               )}
             </TabsContent>
           </Tabs>
@@ -738,6 +706,8 @@ function App() {
 }
 
 export default App;
+
+
 
 
 
