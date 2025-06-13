@@ -70,6 +70,7 @@ const formatDateTime = (dateString, defaultText = 'Fecha inválida') => {
 // Función para normalizar la estructura de datos del análisis basada en la estructura REAL del backend
 const normalizeAnalysisData = (rawAnalysis) => {
   console.log('Normalizing analysis data:', rawAnalysis);
+  console.log('Type of rawAnalysis:', typeof rawAnalysis); // Added log
   
   if (!rawAnalysis) {
     return null;
@@ -97,9 +98,9 @@ const extractStatistics = (analysis) => {
   const capacityFactor = safeGet(analysis, 'capacity_factor', {});
   const powerDensity = safeGet(analysis, 'power_density', {});
   const weibullAnalysis = safeGet(analysis, 'weibull_analysis', {});
-  const turbulenceAnalysis = safeGet(analysis, 'turbulence_analysis', {}); // Added this line
+  const turbulenceAnalysis = safeGet(analysis, 'turbulence_analysis', {});
 
-  console.log('Extracting statistics from:', { basicStats, capacityFactor, powerDensity, weibullAnalysis, turbulenceAnalysis }); // Updated log
+  console.log('Extracting statistics from:', { basicStats, capacityFactor, powerDensity, weibullAnalysis, turbulenceAnalysis });
 
   return {
     // Estadísticas básicas
@@ -111,12 +112,12 @@ const extractStatistics = (analysis) => {
     std_wind_speed_100m: safeNumber(basicStats.std_wind_speed_100m || basicStats.std),
     
     // Factor de capacidad
-    capacity_factor_10m: safeNumber(capacityFactor.capacity_factor),
-    capacity_factor_100m: safeNumber(capacityFactor.capacity_factor),
+    capacity_factor_10m: safeNumber(capacityFactor.capacity_factor_10m || capacityFactor.value),
+    capacity_factor_100m: safeNumber(capacityFactor.capacity_factor_100m || capacityFactor.value),
     
     // Densidad de potencia
-    power_density_10m: safeNumber(powerDensity.mean_power_density),
-    power_density_100m: safeNumber(powerDensity.mean_power_density),
+    power_density_10m: safeNumber(powerDensity.power_density_10m || powerDensity.value),
+    power_density_100m: safeNumber(powerDensity.power_density_100m || powerDensity.value),
     
     // Parámetros de Weibull
     weibull_k_10m: safeNumber(weibullAnalysis.k_10m || weibullAnalysis.k),
@@ -125,8 +126,8 @@ const extractStatistics = (analysis) => {
     weibull_c_100m: safeNumber(weibullAnalysis.c_100m || weibullAnalysis.c),
 
     // Intensidad de Turbulencia
-    turbulence_intensity_10m: safeNumber(turbulenceAnalysis.overall?.turbulence_intensity),
-    turbulence_intensity_100m: safeNumber(turbulenceAnalysis.overall?.turbulence_intensity)
+    turbulence_intensity_10m: safeNumber(turbulenceAnalysis.turbulence_intensity_10m || turbulenceAnalysis.intensity_10m),
+    turbulence_intensity_100m: safeNumber(turbulenceAnalysis.turbulence_intensity_100m || turbulenceAnalysis.intensity_100m)
   };
 };
 
@@ -170,10 +171,7 @@ const prepareChartData = (analysis, era5Data) => {
   }
   
   // Preparar datos de histograma de Weibull
-  const weibullData = safeArray(analysis.weibull_analysis?.plot_data?.x_values.map((x, i) => ({
-    speed_bin: x,
-    frequency: analysis.weibull_analysis.plot_data.y_values[i]
-  })));
+  const weibullData = safeArray(analysis.weibull_analysis?.histogram_data);
   
   // Preparar datos de rosa de vientos
   const windRoseData = safeArray(analysis.wind_rose?.data);
@@ -190,7 +188,7 @@ const prepareChartData = (analysis, era5Data) => {
     });
   }
   
-  console.log('Prepared chart data:', { timeSeriesData, weibullData, windRoseData, hourlyData });
+  console.log('Prepared chart data:', { timeSeriesData, weibullData, windRoseData, hourlyData }); // Added log
   
   return {
     timeSeries: timeSeriesData,
@@ -465,7 +463,7 @@ function App() {
       }); // Added log
 
       setActiveTab('results');
-      console.log('Analysis completed successfully. Navigating to results tab.');
+      console.log('Analysis completed successfully. Navigating to results tab. Active tab set to:', 'results'); // Added log
 
     } catch (err) {
       console.error('Error during analysis:', err);
