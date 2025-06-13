@@ -523,6 +523,9 @@ function App() {
     return '📊';
   };
 
+  // ✅ AÑADE ESTA LÍNEA AQUÍ (ANTES DEL return)
+  const viability = extractViability(analysisData.analysis);
+  const chartData = prepareChartData(analysisData.analysis, analysisData.era5Data);
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50">
       {/* Header */}
@@ -724,19 +727,19 @@ function App() {
                     <p><strong>Área Analizada:</strong> {analysisData?.location?.bounds?.[0]?.[0]?.toFixed(2) || 'N/A'}°, {analysisData?.location?.bounds?.[0]?.[1]?.toFixed(2) || 'N/A'}° a {analysisData?.location?.bounds?.[1]?.[0]?.toFixed(2) || 'N/A'}°, {analysisData?.location?.bounds?.[1]?.[1]?.toFixed(2) || 'N/A'}°</p>
                     <p><strong>Fecha de Inicio:</strong> {dateRange?.startDate || 'N/A'}</p>
                     <p><strong>Fecha de Fin:</strong> {dateRange?.endDate || 'N/A'}</p>
-                    {analysisData?.viability_level ? (
-                      <div className={`p-3 rounded-md ${getViabilityColor(analysisData.viability_level)} text-white flex items-center space-x-2`}>
-                        <span className="text-2xl">{getViabilityIcon(analysisData.recommendation)}</span>
-                        <p className="font-bold">{analysisData.recommendation || 'Sin recomendación disponible'}</p>
-                      </div>
-                    ) : (
-                      <div className="p-3 rounded-md bg-gray-500 text-white flex items-center space-x-2">
-                        <span className="text-2xl">❓</span>
-                        <p className="font-bold">Datos de viabilidad no disponibles</p>
-                      </div>
-                    )}
-                    <p className="text-sm text-gray-700"><strong>Velocidad Promedio del Viento:</strong> {analysisData?.avg_wind_speed?.toFixed(2) || 'N/A'} m/s</p>
-                    <p className="text-sm text-gray-700"><strong>Nivel de Viabilidad:</strong> {analysisData?.viability_level || 'No disponible'}</p>
+		{viability?.level && viability?.recommendation ? (
+  			<div className={`p-3 rounded-md ${getViabilityColor(viability.level)} text-white flex items-center space-x-2`}>
+ 			 <span className="text-2xl">{getViabilityIcon(viability.recommendation)}</span>
+ 			   <p className="font-bold">{viability.recommendation}</p>
+ 			 </div>
+			) : (
+		  <div className="p-3 rounded-md bg-gray-500 text-white flex items-center space-x-2">
+  		  <span className="text-2xl">❓</span>
+  		  <p className="font-bold">Datos de viabilidad no disponibles</p>
+ 		 </div>
+		)}
+                    <p className="text-sm text-gray-700"><strong>Velocidad Promedio del Viento (100m):</strong> {formatNumber(extractStatistics(analysisData.analysis).mean_wind_speed_				100m)} m/s</p>
+                    <p className="text-sm text-gray-700"><strong>Nivel de Viabilidad:</strong> {viability.level || 'No disponible'}</p>
                   </CardContent>
                 </Card>
 
@@ -767,17 +770,16 @@ function App() {
                     <CardTitle>Histograma de Velocidad del Viento (100m) con Ajuste Weibull</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {analysisData.weibull_histogram_100m && analysisData.weibull_fit_100m ? (
-                      <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={analysisData.weibull_histogram_100m}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="speed_bin" />
-                          <YAxis />
-                          <Tooltip />
-                          <Bar dataKey="frequency" fill="#8884d8" name="Frecuencia" />
-                          <Line type="monotone" dataKey="weibull_fit" stroke="#82ca9d" name="Ajuste Weibull" dot={false} />
-                        </BarChart>
-                      </ResponsiveContainer>
+		{chartData.weibullHistogram && chartData.weibullHistogram.length > 0 ? (
+ 			 <ResponsiveContainer width="100%" height={300}>
+   				 <BarChart data={chartData.weibullHistogram}>
+     				 <CartesianGrid strokeDasharray="3 3" />
+     				 <XAxis dataKey="speed_bin" />
+     				 <YAxis />
+    			  <Tooltip />
+    			  <Bar dataKey="frequency" fill="#8884d8" name="Frecuencia" />
+    			</BarChart>
+  			</ResponsiveContainer>
                     ) : (
                       <p>No hay datos de histograma disponibles.</p>
                     )}
@@ -790,15 +792,15 @@ function App() {
                     <CardTitle>Evolución Temporal del Viento (100m)</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {analysisData.era5Data?.wind_speed_100m ? (
-                      <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={analysisData.era5Data.wind_speed_100m.map((speed, index) => ({ time: analysisData.era5Data.timestamps[index], speed }))}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="time" tickFormatter={(tick) => new Date(tick).toLocaleDateString()} />
-                          <YAxis />
-                          <Tooltip labelFormatter={(label) => new Date(label).toLocaleString()} />
-                          <Line type="monotone" dataKey="speed" stroke="#8884d8" name="Velocidad del Viento (m/s)" dot={false} />
-                        </LineChart>
+		{chartData.timeSeries && chartData.timeSeries.length > 0 ? (
+ 		   <ResponsiveContainer width="100%" height={300}>
+                       <LineChart data={chartData.timeSeries}>
+                       <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="time" tickFormatter={(tick) => new Date(tick).toLocaleDateString()} />
+                	      <YAxis />
+                       <Tooltip labelFormatter={(label) => new Date(label).toLocaleString()} />
+                      <Line type="monotone" dataKey="speed" stroke="#8884d8" name="Velocidad del Viento (m/s)" dot={false} />
+                      </LineChart>
                       </ResponsiveContainer>
                     ) : (
                       <p>No hay datos de evolución temporal disponibles.</p>
@@ -812,15 +814,14 @@ function App() {
                     <CardTitle>Boxplot Horario de Velocidad del Viento (100m)</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {analysisData.hourly_boxplot_100m ? (
-                      <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={analysisData.hourly_boxplot_100m}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="hour" />
-                          <YAxis />
-                          <Tooltip />
-                          <Bar dataKey="median" fill="#82ca9d" name="Mediana" />
-                          {/* Puedes añadir más barras para cuartiles si los datos lo permiten */}
+		  {chartData.hourlyPatterns && chartData.hourlyPatterns.length > 0 ? (
+  			<ResponsiveContainer width="100%" height={300}>
+   			       <BarChart data={chartData.hourlyPatterns}>
+   				   <CartesianGrid strokeDasharray="3 3" />
+     				 <XAxis dataKey="hour" />
+     				 <YAxis />
+     			     <Tooltip />
+                          <Bar dataKey="speed" fill="#82ca9d" name="Velocidad Media" />
                         </BarChart>
                       </ResponsiveContainer>
                     ) : (
@@ -828,6 +829,28 @@ function App() {
                     )}
                   </CardContent>
                 </Card>
+
+                  {/* mostrar la rosa de vientos */}
+		<Card>
+  		<CardHeader>
+    			<CardTitle>Rosa de Vientos</CardTitle>
+  			</CardHeader>
+  			<CardContent>
+    			 {chartData.windRose && chartData.windRose.length > 0 ? (
+                                  <ResponsiveContainer width="100%" height={300}>
+                                      <BarChart data={chartData.windRose}>
+                                         <CartesianGrid strokeDasharray="3 3" />
+                                     <XAxis dataKey="direction" />
+                                    <YAxis />
+                                  <Tooltip />
+                             <Bar dataKey="frequency" fill="#8884d8" name="Frecuencia (%)" />
+                          </BarChart>
+                       </ResponsiveContainer>
+                   ) : (
+                     <p>No hay datos de rosa de vientos disponibles.</p>
+                   )}
+                 </CardContent>
+              </Card>
 
                 {/* Turbulencia y Otros Gráficos (Placeholder) */}
                 <Card>
@@ -886,6 +909,7 @@ function App() {
 }
 
 export default App;
+
 
 
 
