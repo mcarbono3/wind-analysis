@@ -67,128 +67,57 @@ const formatDateTime = (dateString, defaultText = 'Fecha inválida') => {
   }
 };
 
-// Función para normalizar la estructura de datos del análisis basada en la estructura real
+// Función para normalizar la estructura de datos del análisis
 const normalizeAnalysisData = (rawAnalysis) => {
   console.log('Normalizing analysis data:', rawAnalysis);
   
-  if (!rawAnalysis) {
-    return {
-      basic_statistics: {},
-      capacity_factor: {},
-      overall_assessment: {},
-      power_density: {},
-      turbulence_analysis: {},
-      weibull_analysis: {},
-      wind_rose: {},
-      time_series: []
-    };
+  // Si ya tiene la estructura correcta, devolverla tal como está
+  if (rawAnalysis && rawAnalysis.statistics && rawAnalysis.viability) {
+    return rawAnalysis;
   }
   
-  const normalized = {
-    basic_statistics: rawAnalysis.basic_statistics || {},
-    capacity_factor: rawAnalysis.capacity_factor || {},
-    overall_assessment: rawAnalysis.overall_assessment || {},
-    power_density: rawAnalysis.power_density || {},
-    turbulence_analysis: rawAnalysis.turbulence_analysis || {},
-    weibull_analysis: rawAnalysis.weibull_analysis || {},
-    wind_rose: rawAnalysis.wind_rose || {},
-    time_series: safeArray(rawAnalysis.time_series),
-    hourly_patterns: rawAnalysis.hourly_patterns || {},
-    monthly_patterns: rawAnalysis.monthly_patterns || {}
+  // Si tiene estructura anidada (analysis.analysis), extraer el nivel interno
+  if (rawAnalysis && rawAnalysis.analysis) {
+    return rawAnalysis.analysis;
+  }
+  
+  // Si no tiene estructura reconocible, crear estructura por defecto
+  return {
+    statistics: rawAnalysis?.statistics || {},
+    viability: rawAnalysis?.viability || {},
+    wind_speed_distribution: rawAnalysis?.wind_speed_distribution || [],
+    wind_rose_data: rawAnalysis?.wind_rose_data || [],
+    time_series: rawAnalysis?.time_series || [],
+    weibull_histogram_100m: rawAnalysis?.weibull_histogram_100m || [],
+    hourly_boxplot_100m: rawAnalysis?.hourly_boxplot_100m || []
   };
-  console.log('Normalized analysis data (after processing):', normalized);
-  return normalized;
 };
 
-// Función para extraer estadísticas de la estructura real
+// Función para validar y extraer estadísticas
 const extractStatistics = (analysis) => {
-  const basicStats = safeGet(analysis, 'basic_statistics', {});
-  const capacityFactor = safeGet(analysis, 'capacity_factor', {});
-  const powerDensity = safeGet(analysis, 'power_density', {});
-  const weibullAnalysis = safeGet(analysis, 'weibull_analysis', {});
-  
-  const stats = {
-    mean_wind_speed_10m: safeNumber(basicStats.mean_wind_speed_10m),
-    mean_wind_speed_100m: safeNumber(basicStats.mean_wind_speed_100m),
-    max_wind_speed_10m: safeNumber(basicStats.max_wind_speed_10m),
-    max_wind_speed_100m: safeNumber(basicStats.max_wind_speed_100m),
-    std_wind_speed_10m: safeNumber(basicStats.std_wind_speed_10m),
-    std_wind_speed_100m: safeNumber(basicStats.std_wind_speed_100m),
-    capacity_factor_10m: safeNumber(capacityFactor.capacity_factor_10m),
-    capacity_factor_100m: safeNumber(capacityFactor.capacity_factor_100m),
-    power_density_10m: safeNumber(powerDensity.power_density_10m),
-    power_density_100m: safeNumber(powerDensity.power_density_100m),
-    weibull_k_10m: safeNumber(weibullAnalysis.k_10m),
-    weibull_c_10m: safeNumber(weibullAnalysis.c_10m),
-    weibull_k_100m: safeNumber(weibullAnalysis.k_100m),
-    weibull_c_100m: safeNumber(weibullAnalysis.c_100m)
-  };
-  console.log('Extracted Statistics:', stats);
-  return stats;
-};
-
-// Función para extraer datos de viabilidad de la estructura real
-const extractViability = (analysis) => {
-  const assessment = safeGet(analysis, 'overall_assessment', {});
-  
-  const viabilityData = {
-    level: assessment.viability_level || assessment.level || 'No disponible',
-    recommendation: assessment.recommendation || assessment.message || 'Sin recomendación disponible',
-    score: safeNumber(assessment.viability_score || assessment.score),
-    summary: assessment.summary || 'Sin resumen disponible'
-  };
-  console.log('Extracted Viability:', viabilityData);
-  return viabilityData;
-};
-
-// Función para preparar datos de gráficos
-const prepareChartData = (analysis, era5Data) => {
-  console.log('Preparing chart data. Analysis:', analysis, 'ERA5 Data:', era5Data);
-
-  const timeSeries = safeArray(analysis.time_series);
-  const windSpeeds100m = safeArray(era5Data.wind_speed_100m);
-  const timestamps = safeArray(era5Data.timestamps);
-  
-  // Preparar datos de serie temporal
-  const timeSeriesData = [];
-  const minLength = Math.min(windSpeeds100m.length, timestamps.length);
-  
-  for (let i = 0; i < minLength; i++) {
-    if (timestamps[i] && windSpeeds100m[i] !== undefined) {
-      timeSeriesData.push({
-        time: timestamps[i],
-        speed: safeNumber(windSpeeds100m[i])
-      });
-    }
-  }
-  console.log('TimeSeries Data for Chart:', timeSeriesData);
-
-  // Preparar datos de histograma de Weibull
-  const weibullData = safeArray(analysis.weibull_analysis?.histogram_data);
-  console.log('Weibull Histogram Data for Chart:', weibullData);
-  
-  // Preparar datos de rosa de vientos
-  const windRoseData = safeArray(analysis.wind_rose?.data);
-  console.log('Wind Rose Data for Chart:', windRoseData);
-  
-  // Preparar datos de patrones horarios
-  const hourlyData = [];
-  const hourlyPatterns = safeGet(analysis, 'hourly_patterns', {});
-  if (hourlyPatterns.mean_by_hour) {
-    Object.entries(hourlyPatterns.mean_by_hour).forEach(([hour, speed]) => {
-      hourlyData.push({
-        hour: parseInt(hour),
-        speed: safeNumber(speed)
-      });
-    });
-  }
-  console.log('Hourly Patterns Data for Chart:', hourlyData);
+  const stats = safeGet(analysis, 'statistics', {});
   
   return {
-    timeSeries: timeSeriesData,
-    weibullHistogram: weibullData,
-    windRose: windRoseData,
-    hourlyPatterns: hourlyData
+    mean_wind_speed: safeNumber(stats.mean_wind_speed || stats.mean_wind_speed_10m),
+    mean_wind_speed_10m: safeNumber(stats.mean_wind_speed_10m),
+    mean_wind_speed_100m: safeNumber(stats.mean_wind_speed_100m),
+    power_density_100m: safeNumber(stats.power_density_100m),
+    capacity_factor_100m: safeNumber(stats.capacity_factor_100m),
+    probability_gt_8ms_100m: safeNumber(stats.probability_gt_8ms_100m),
+    weibull_k_100m: safeNumber(stats.weibull_k_100m),
+    weibull_c_100m: safeNumber(stats.weibull_c_100m),
+    turbulence_intensity_100m: safeNumber(stats.turbulence_intensity_100m)
+  };
+};
+
+// Función para extraer datos de viabilidad
+const extractViability = (analysis) => {
+  const viability = safeGet(analysis, 'viability', {});
+  
+  return {
+    level: viability.level || viability.viability_level || 'No disponible',
+    recommendation: viability.recommendation || viability.message || 'Sin recomendación disponible',
+    score: safeNumber(viability.score || viability.viability_score)
   };
 };
 
@@ -312,14 +241,6 @@ function App() {
     console.log('App useEffect - selectedArea changed to:', selectedArea);
   }, [selectedArea]);
 
-  useEffect(() => {
-    console.log('App useEffect - analysisData changed to:', analysisData);
-    if (analysisData && Object.keys(analysisData.analysis).length > 0) {
-      console.log('Detailed analysisData.analysis:', analysisData.analysis);
-      console.log('Detailed analysisData.era5Data:', analysisData.era5Data);
-    }
-  }, [analysisData]);
-
   // Coordenadas del Caribe colombiano
   const caribbeanBounds = {
     lat_min: 8.0,
@@ -437,7 +358,8 @@ function App() {
       
       console.log('Normalized analysis data:', normalizedAnalysis);
 
-      setAnalysisData({
+      setAnalysisData(prevData => ({
+        ...prevData,
         analysis: normalizedAnalysis,
         location: {
           bounds: selectedArea,
@@ -456,7 +378,7 @@ function App() {
           temperature_2m: safeArray(era5Data.temperature_2m),
           timestamps: safeArray(era5Data.timestamps)
         }
-      });
+      }));
 
       setActiveTab('results');
       console.log('Analysis completed successfully. Navigating to results tab.');
@@ -549,13 +471,36 @@ function App() {
     alert('Funcionalidad de exportar PDF en desarrollo. Próximamente disponible.');
   };
 
+  // Preparar datos para gráficos con validación
+  const prepareTimeSeriesData = () => {
+    const windSpeeds = safeArray(analysisData.era5Data.wind_speed_100m);
+    const timestamps = safeArray(analysisData.era5Data.timestamps);
+    
+    if (windSpeeds.length === 0 || timestamps.length === 0) {
+      return [];
+    }
+
+    const minLength = Math.min(windSpeeds.length, timestamps.length);
+    const data = [];
+
+    for (let i = 0; i < minLength; i++) {
+      const timestamp = timestamps[i];
+      const speed = safeNumber(windSpeeds[i]);
+      
+      if (timestamp && speed !== null) {
+        data.push({
+          time: timestamp,
+          speed: speed
+        });
+      }
+    }
+
+    return data;
+  };
+
   // Extraer datos normalizados para el renderizado
   const statistics = extractStatistics(analysisData.analysis);
   const viability = extractViability(analysisData.analysis);
-  const chartData = prepareChartData(analysisData.analysis, analysisData.era5Data);
-
-  // Verificar si hay datos de análisis
-  const hasAnalysisData = analysisData && Object.keys(analysisData.analysis).length > 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50">
@@ -744,7 +689,7 @@ function App() {
 
           {/* Tab: Resultados */}
           <TabsContent value="results" className="space-y-6">
-            {hasAnalysisData ? (
+            {analysisData && Object.keys(analysisData.analysis).length > 0 ? (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Resumen del Análisis */}
                 <Card>
@@ -762,10 +707,7 @@ function App() {
                     {viability.level && viability.level !== 'No disponible' ? (
                       <div className={`p-3 rounded-md ${getViabilityColor(viability.level)} text-white flex items-center space-x-2`}>
                         <span className="text-2xl">{getViabilityIcon(viability.recommendation)}</span>
-                        <div>
-                          <p className="font-bold">{viability.recommendation}</p>
-                          {viability.summary && <p className="text-sm mt-1">{viability.summary}</p>}
-                        </div>
+                        <p className="font-bold">{viability.recommendation}</p>
                       </div>
                     ) : (
                       <div className="p-3 rounded-md bg-gray-500 text-white flex items-center space-x-2">
@@ -774,8 +716,7 @@ function App() {
                       </div>
                     )}
                     
-                    <p className="text-sm text-gray-700"><strong>Velocidad Promedio del Viento (10m):</strong> {formatNumber(statistics.mean_wind_speed_10m)} m/s</p>
-                    <p className="text-sm text-gray-700"><strong>Velocidad Promedio del Viento (100m):</strong> {formatNumber(statistics.mean_wind_speed_100m)} m/s</p>
+                    <p className="text-sm text-gray-700"><strong>Velocidad Promedio del Viento:</strong> {formatNumber(statistics.mean_wind_speed)} m/s</p>
                     <p className="text-sm text-gray-700"><strong>Nivel de Viabilidad:</strong> {viability.level}</p>
                   </CardContent>
                 </Card>
@@ -788,14 +729,37 @@ function App() {
                   <CardContent className="space-y-2">
                     <p><strong>Velocidad Media del Viento (10m):</strong> {formatNumber(statistics.mean_wind_speed_10m)} m/s</p>
                     <p><strong>Velocidad Media del Viento (100m):</strong> {formatNumber(statistics.mean_wind_speed_100m)} m/s</p>
-                    <p><strong>Velocidad Máxima del Viento (10m):</strong> {formatNumber(statistics.max_wind_speed_10m)} m/s</p>
-                    <p><strong>Velocidad Máxima del Viento (100m):</strong> {formatNumber(statistics.max_wind_speed_100m)} m/s</p>
-                    <p><strong>Densidad de Potencia (10m):</strong> {formatNumber(statistics.power_density_10m)} W/m²</p>
                     <p><strong>Densidad de Potencia (100m):</strong> {formatNumber(statistics.power_density_100m)} W/m²</p>
-                    <p><strong>Factor de Capacidad (10m):</strong> {formatPercentage(statistics.capacity_factor_10m)}</p>
                     <p><strong>Factor de Capacidad (100m):</strong> {formatPercentage(statistics.capacity_factor_100m)}</p>
+                    <p><strong>Probabilidad de Vientos &gt; 8 m/s (100m):</strong> {formatPercentage(statistics.probability_gt_8ms_100m)}</p>
                     <p><strong>Parámetro k de Weibull (100m):</strong> {formatNumber(statistics.weibull_k_100m)}</p>
                     <p><strong>Parámetro c de Weibull (100m):</strong> {formatNumber(statistics.weibull_c_100m)} m/s</p>
+                  </CardContent>
+                </Card>
+
+                {/* Histograma de Velocidad del Viento con Ajuste Weibull */}
+                <Card className="lg:col-span-2">
+                  <CardHeader>
+                    <CardTitle>Histograma de Velocidad del Viento (100m) con Ajuste Weibull</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {safeArray(safeGet(analysisData, 'analysis.weibull_histogram_100m')).length > 0 ? (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={safeGet(analysisData, 'analysis.weibull_histogram_100m', [])}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="speed_bin" />
+                          <YAxis />
+                          <Tooltip />
+                          <Bar dataKey="frequency" fill="#8884d8" name="Frecuencia" />
+                          <Line type="monotone" dataKey="weibull_fit" stroke="#82ca9d" name="Ajuste Weibull" dot={false} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <p>No hay datos de histograma disponibles.</p>
+                        <p className="text-sm mt-2">Los datos pueden estar procesándose o no estar disponibles para el área seleccionada.</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -805,9 +769,9 @@ function App() {
                     <CardTitle>Evolución Temporal del Viento (100m)</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {chartData.timeSeries.length > 0 ? (
+                    {prepareTimeSeriesData().length > 0 ? (
                       <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={chartData.timeSeries}>
+                        <LineChart data={prepareTimeSeriesData()}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis 
                             dataKey="time" 
@@ -829,70 +793,45 @@ function App() {
                   </CardContent>
                 </Card>
 
-                {/* Histograma de Velocidad del Viento con Ajuste Weibull */}
-                <Card className="lg:col-span-2">
-                  <CardHeader>
-                    <CardTitle>Histograma de Velocidad del Viento con Ajuste Weibull</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {chartData.weibullHistogram.length > 0 ? (
-                      <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={chartData.weibullHistogram}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="speed_bin" />
-                          <YAxis />
-                          <Tooltip />
-                          <Bar dataKey="frequency" fill="#8884d8" name="Frecuencia" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="text-center py-8 text-gray-500">
-                        <p>No hay datos de histograma disponibles.</p>
-                        <p className="text-sm mt-2">Los datos pueden estar procesándose o no estar disponibles para el área seleccionada.</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Patrones Horarios */}
+                {/* Boxplot Horario de Velocidad del Viento (100m) */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Patrones Horarios de Velocidad del Viento</CardTitle>
+                    <CardTitle>Boxplot Horario de Velocidad del Viento (100m)</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {chartData.hourlyPatterns.length > 0 ? (
+                    {safeArray(safeGet(analysisData, 'analysis.hourly_boxplot_100m')).length > 0 ? (
                       <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={chartData.hourlyPatterns}>
+                        <BarChart data={safeGet(analysisData, 'analysis.hourly_boxplot_100m', [])}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="hour" />
                           <YAxis />
                           <Tooltip />
-                          <Bar dataKey="speed" fill="#82ca9d" name="Velocidad Promedio (m/s)" />
+                          <Bar dataKey="median" fill="#82ca9d" name="Mediana" />
                         </BarChart>
                       </ResponsiveContainer>
                     ) : (
                       <div className="text-center py-8 text-gray-500">
-                        <p>No hay datos de patrones horarios disponibles.</p>
+                        <p>No hay datos de boxplot horario disponibles.</p>
                       </div>
                     )}
                   </CardContent>
                 </Card>
 
-                {/* Análisis de Turbulencia */}
+                {/* Turbulencia y Otros Gráficos */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Análisis de Turbulencia</CardTitle>
+                    <CardTitle>Turbulencia y Otros Gráficos</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {safeGet(analysisData, 'analysis.turbulence_analysis') ? (
+                    {statistics.turbulence_intensity_100m && statistics.turbulence_intensity_100m !== 0 ? (
                       <div className="space-y-2">
-                        <p><strong>Intensidad de Turbulencia (10m):</strong> {formatNumber(safeGet(analysisData, 'analysis.turbulence_analysis.turbulence_intensity_10m'))}</p>
-                        <p><strong>Intensidad de Turbulencia (100m):</strong> {formatNumber(safeGet(analysisData, 'analysis.turbulence_analysis.turbulence_intensity_100m'))}</p>
+                        <p><strong>Intensidad de Turbulencia (100m):</strong> {formatNumber(statistics.turbulence_intensity_100m)}</p>
                         <p className="text-sm text-gray-600">La intensidad de turbulencia indica la variabilidad del viento en el área analizada.</p>
                       </div>
                     ) : (
                       <div className="text-center py-8 text-gray-500">
-                        <p>Datos de análisis de turbulencia no disponibles.</p>
+                        <p>Gráficos de turbulencia, variación anual de Weibull, etc., se mostrarán aquí.</p>
+                        <p className="text-sm mt-2">Los datos pueden estar procesándose o no estar disponibles para el área seleccionada.</p>
                       </div>
                     )}
                   </CardContent>
@@ -926,8 +865,8 @@ function App() {
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      <p>No hay datos de análisis disponibles.</p>
-                      <p className="text-sm">Por favor, selecciona un área en el mapa e inicia un análisis.</p>
+                      <p>Selecciona un área en el mapa y haz clic en "Iniciar Análisis Eólico" para ver los resultados.</p>
+                      <p className="text-sm">Los resultados incluirán estadísticas detalladas, gráficos y análisis de viabilidad eólica.</p>
                     </div>
                   )}
                 </CardContent>
@@ -938,8 +877,8 @@ function App() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-white shadow-sm border-t mt-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center text-gray-500 text-sm">
+      <footer className="bg-gray-800 text-white py-4 mt-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm">
           © {new Date().getFullYear()} Análisis Eólico Caribe. Todos los derechos reservados.
         </div>
       </footer>
@@ -948,3 +887,5 @@ function App() {
 }
 
 export default App;
+
+
