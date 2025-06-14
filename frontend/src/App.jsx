@@ -357,19 +357,29 @@ function App() {
       return;
     }
 
-    // Validar que el área seleccionada tenga dimensiones mínimas (reducido a 0.005)
-    const latDiff = Math.abs(selectedArea[1][0] - selectedArea[0][0]);
-    const lonDiff = Math.abs(selectedArea[1][1] - selectedArea[0][1]);
-    
-   const minThreshold = 0.005;
+    // Hacemos una copia profunda del área seleccionada
+let areaToAnalyze = selectedArea.map(coord => [...coord]);
+
+// Calculamos diferencias sobre la copia
+let latDiff = Math.abs(areaToAnalyze[1][0] - areaToAnalyze[0][0]);
+let lonDiff = Math.abs(areaToAnalyze[1][1] - areaToAnalyze[0][1]);
+
+const minThreshold = 0.005;
+
 if (latDiff === 0 && lonDiff === 0) {
-  // Fuerza una expansión mínima del área si es un punto
-  selectedArea[0][0] -= minThreshold / 2;
-  selectedArea[0][1] -= minThreshold / 2;
-  selectedArea[1][0] += minThreshold / 2;
-  selectedArea[1][1] += minThreshold / 2;
-  console.log('⚠️ Área puntual detectada. Se expandió automáticamente a:', selectedArea);
-} else if (latDiff < minThreshold || lonDiff < minThreshold) {
+  // Expansión automática para clic puntual
+  areaToAnalyze[0][0] -= minThreshold / 2;
+  areaToAnalyze[0][1] -= minThreshold / 2;
+  areaToAnalyze[1][0] += minThreshold / 2;
+  areaToAnalyze[1][1] += minThreshold / 2;
+  console.log('⚠️ Área puntual detectada. Se expandió automáticamente a:', areaToAnalyze);
+
+  // recalcula después de expandir
+  latDiff = Math.abs(areaToAnalyze[1][0] - areaToAnalyze[0][0]);
+  lonDiff = Math.abs(areaToAnalyze[1][1] - areaToAnalyze[0][1]);
+}
+
+if (latDiff < minThreshold || lonDiff < minThreshold) {
   setError('El área seleccionada es demasiado pequeña. Por favor selecciona un área más grande.');
   console.log('❌ Error: Selected area is too small. LatDiff:', latDiff, 'LonDiff:', lonDiff);
   return;
@@ -399,10 +409,10 @@ if (latDiff === 0 && lonDiff === 0) {
       });
       
       const era5Response = await axios.post(`${API_BASE_URL}/wind-data`, {
-        lat_min: selectedArea[0][0],
-        lat_max: selectedArea[1][0],
-        lon_min: selectedArea[0][1],
-        lon_max: selectedArea[1][1],
+	 lat_min: areaToAnalyze[0][0],
+  	 lat_max: areaToAnalyze[1][0],
+ 	 lon_min: areaToAnalyze[0][1],
+ 	 lon_max: areaToAnalyze[1][1],
         start_date: dateRange.startDate,
         end_date: dateRange.endDate,
         variables: [
@@ -447,10 +457,10 @@ if (latDiff === 0 && lonDiff === 0) {
           viability: analysisResult.viability || {},
         },
         location: {
-          bounds: selectedArea,
+          bounds: areaToAnalyze,
           center: [
-            (selectedArea[0][0] + selectedArea[1][0]) / 2,
-            (selectedArea[0][1] + selectedArea[1][1]) / 2
+    	(areaToAnalyze[0][0] + areaToAnalyze[1][0]) / 2,
+    	(areaToAnalyze[0][1] + areaToAnalyze[1][1]) / 2
           ]
         },
         era5Data: {
@@ -533,10 +543,10 @@ if (latDiff === 0 && lonDiff === 0) {
 
   // ✅ AÑADE ESTA LÍNEA AQUÍ (ANTES DEL return)
   const viability = extractViability(analysisData.analysis);
-  const chartData = analysisData.analysis && analysisData.era5Data
+    const chartData = analysisData.analysis && analysisData.era5Data
   ? prepareChartData(analysisData.analysis, analysisData.era5Data)
   : { timeSeries: [], weibullHistogram: [], windRose: [], hourlyPatterns: [] };
-	
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50">
       {/* Header */}
@@ -797,12 +807,12 @@ if (latDiff === 0 && lonDiff === 0) {
                   </CardContent>
                 </Card>
 
-                {/* Evolución Temporal del Viento (100m) */}
+                {/* Evolución Temporal del Viento (100m) - Contiene el codigo viejo porque al parecer la variable timestamps no viene desde backend */}
                 <Card className="lg:col-span-2">
                   <CardHeader>
                     <CardTitle>Evolución Temporal del Viento (100m)</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+                     </CardHeader>
+                      <CardContent>
                     {analysisData.era5Data?.wind_speed_100m ? (
                       <ResponsiveContainer width="100%" height={300}>
                         <LineChart data={analysisData.era5Data.wind_speed_100m.map((speed, index) => ({ time: analysisData.era5Data.timestamps[index], speed }))}>
@@ -811,7 +821,7 @@ if (latDiff === 0 && lonDiff === 0) {
                           <YAxis />
                           <Tooltip labelFormatter={(label) => new Date(label).toLocaleString()} />
                           <Line type="monotone" dataKey="speed" stroke="#8884d8" name="Velocidad del Viento (m/s)" dot={false} />
-                      </LineChart>
+    		</LineChart>
                       </ResponsiveContainer>
                     ) : (
                       <p>No hay datos de evolución temporal disponibles.</p>
@@ -920,8 +930,3 @@ if (latDiff === 0 && lonDiff === 0) {
 }
 
 export default App;
-
-
-
-
-
