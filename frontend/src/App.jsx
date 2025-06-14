@@ -206,6 +206,7 @@ function MapSelector({ onAreaSelect, selectedArea, isSelecting, setIsSelecting }
   const [startPoint, setStartPoint] = useState(null);
   const [currentBounds, setCurrentBounds] = useState(null);
   const map = useMap();
+  const [touchStartPoint, setTouchStartPoint] = useState(null);
 
   useEffect(() => {
     console.log('🗺️ MapSelector useEffect - isSelecting:', isSelecting);
@@ -254,6 +255,31 @@ function MapSelector({ onAreaSelect, selectedArea, isSelecting, setIsSelecting }
         setStartPoint(null);
         setCurrentBounds(null);
         console.log('🗺️ MapSelector: Selection finished');
+      }
+    },
+    touchstart: (e) => {
+      if (isSelecting) {
+        const touch = e.latlng;
+        setTouchStartPoint([touch.lat, touch.lng]);
+        setCurrentBounds([[touch.lat, touch.lng], [touch.lat, touch.lng]]);
+      }
+    },
+    touchmove: (e) => {
+      if (isSelecting && touchStartPoint) {
+        const touch = e.latlng;
+        const newBounds = [
+          [Math.min(touchStartPoint[0], touch.lat), Math.min(touchStartPoint[1], touch.lng)],
+          [Math.max(touchStartPoint[0], touch.lat), Math.max(touchStartPoint[1], touch.lng)]
+        ];
+        setCurrentBounds(newBounds);
+      }
+    },
+    touchend: () => {
+      if (isSelecting && currentBounds) {
+        onAreaSelect(currentBounds);
+        setIsSelecting(false);
+        setTouchStartPoint(null);
+        setCurrentBounds(null);
       }
     },
     click: (e) => {
@@ -377,7 +403,7 @@ if (latDiff === 0 && lonDiff === 0) {
   // recalcula después de expandir
   latDiff = Math.abs(areaToAnalyze[1][0] - areaToAnalyze[0][0]);
   lonDiff = Math.abs(areaToAnalyze[1][1] - areaToAnalyze[0][1]);
-	
+
 }
 
 if (latDiff + 1e-10 < minThreshold || lonDiff + 1e-10 < minThreshold) {
