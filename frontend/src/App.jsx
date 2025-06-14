@@ -331,12 +331,6 @@ function App() {
   endDate: formatISO(defaultEndDate)
   });
 
-{dateValidationError && (
-  <Alert variant="destructive" className="mt-2">
-    <AlertDescription>{dateValidationError}</AlertDescription>
-  </Alert>
-)}
-  });
   const [analysisData, setAnalysisData] = useState({
     analysis: {},
     location: {},
@@ -758,6 +752,12 @@ if (latDiff + 1e-10 < minThreshold || lonDiff + 1e-10 < minThreshold) {
                     />
                   </div>
 		
+		  {dateValidationError && (
+   		 <Alert variant="destructive" className="mt-2">
+      		<AlertDescription>{dateValidationError}</AlertDescription>
+    		</Alert>
+ 		 )}
+
 		<Alert variant="info" className="mt-2">
       		<AlertDescription>
         		Este rango de fechas (últimos 15 días hasta 3 días antes de hoy) está recomendado para garantizar disponibilidad de datos ERA5 y una respuesta rápida del sistema.
