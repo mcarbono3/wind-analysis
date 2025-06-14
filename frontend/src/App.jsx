@@ -869,20 +869,21 @@ return (
                   <CardHeader>
                     <CardTitle>Estadísticas Principales</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-2">
-                      <p><strong>Velocidad Media del Viento (10m):</strong> {formatNumber(extractStatistics(analysisData.analysis, windUnit).mean_wind_speed_10m)} m/s</p>
-                      <p><strong>Velocidad Media del Viento (100m):</strong> {formatNumber(extractStatistics(analysisData.analysis, windUnit).mean_wind_speed_100m)} m/s</p>
-                      <p><strong>Velocidad Máxima del Viento (10m):</strong> {formatNumber(extractStatistics(analysisData.analysis, windUnit).max_wind_speed_10m)} m/s</p>
-                      <p><strong>Velocidad Máxima del Viento (100m):</strong> {formatNumber(extractStatistics(analysisData.analysis, windUnit).max_wind_speed_100m)} m/s</p>
-                      <p><strong>Desviación Estándar (10m):</strong> {formatNumber(extractStatistics(analysisData.analysis, windUnit).std_wind_speed_10m)} m/s</p>
-                      <p><strong>Desviación Estándar (100m):</strong> {formatNumber(extractStatistics(analysisData.analysis, windUnit).std_wind_speed_100m)} m/s</p>
-                      <p><strong>Densidad de Potencia (10m):</strong> {formatNumber(extractStatistics(analysisData.analysis, windUnit).power_density_10m)} W/m²</p>
-                      <p><strong>Densidad de Potencia (100m):</strong> {formatNumber(extractStatistics(analysisData.analysis, windUnit).power_density_100m)} W/m²</p>
-                      <p><strong>Factor de Capacidad (10m):</strong> {formatPercentage(extractStatistics(analysisData.analysis, windUnit).capacity_factor_10m)}</p>
-                      <p><strong>Factor de Capacidad (100m):</strong> {formatPercentage(extractStatistics(analysisData.analysis, windUnit).capacity_factor_100m)}</p>
-                      <p><strong>Intensidad de Turbulencia (10m):</strong> {formatPercentage(extractStatistics(analysisData.analysis, windUnit).turbulence_intensity_10m)}</p>
-                      <p><strong>Intensidad de Turbulencia (100m):</strong> {formatPercentage(extractStatistics(analysisData.analysis, windUnit).turbulence_intensity_100m)}</p>
-                  </CardContent>
+<CardContent className="space-y-2">
+  <p><strong>Velocidad Media del Viento (10m):</strong> {formatNumber(extractStatistics(analysisData.analysis, windUnit).mean_wind_speed_10m)} {windUnit === 'kmh' ? 'km/h' : 'm/s'}</p>
+  <p><strong>Velocidad Media del Viento (100m):</strong> {formatNumber(extractStatistics(analysisData.analysis, windUnit).mean_wind_speed_100m)} {windUnit === 'kmh' ? 'km/h' : 'm/s'}</p>
+  <p><strong>Velocidad Máxima del Viento (10m):</strong> {formatNumber(extractStatistics(analysisData.analysis, windUnit).max_wind_speed_10m)} {windUnit === 'kmh' ? 'km/h' : 'm/s'}</p>
+  <p><strong>Velocidad Máxima del Viento (100m):</strong> {formatNumber(extractStatistics(analysisData.analysis, windUnit).max_wind_speed_100m)} {windUnit === 'kmh' ? 'km/h' : 'm/s'}</p>
+  <p><strong>Desviación Estándar (10m):</strong> {formatNumber(extractStatistics(analysisData.analysis, windUnit).std_wind_speed_10m)} {windUnit === 'kmh' ? 'km/h' : 'm/s'}</p>
+  <p><strong>Desviación Estándar (100m):</strong> {formatNumber(extractStatistics(analysisData.analysis, windUnit).std_wind_speed_100m)} {windUnit === 'kmh' ? 'km/h' : 'm/s'}</p>
+  <p><strong>Densidad de Potencia (10m):</strong> {formatNumber(extractStatistics(analysisData.analysis, windUnit).power_density_10m)} W/m²</p>
+  <p><strong>Densidad de Potencia (100m):</strong> {formatNumber(extractStatistics(analysisData.analysis, windUnit).power_density_100m)} W/m²</p>
+  <p><strong>Factor de Capacidad (10m):</strong> {formatPercentage(extractStatistics(analysisData.analysis, windUnit).capacity_factor_10m)}</p>
+  <p><strong>Factor de Capacidad (100m):</strong> {formatPercentage(extractStatistics(analysisData.analysis, windUnit).capacity_factor_100m)}</p>
+  <p><strong>Intensidad de Turbulencia (10m):</strong> {formatPercentage(extractStatistics(analysisData.analysis, windUnit).turbulence_intensity_10m)}</p>
+  <p><strong>Intensidad de Turbulencia (100m):</strong> {formatPercentage(extractStatistics(analysisData.analysis, windUnit).turbulence_intensity_100m)}</p>
+</CardContent>
+
                 </Card>
 
                 {/* Histograma de Velocidad del Viento con Ajuste Weibull */}
@@ -919,7 +920,13 @@ return (
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="time" tickFormatter={(tick) => new Date(tick).toLocaleDateString()} />
                           <YAxis label={{ value: `Velocidad (${windUnit === 'kmh' ? 'km/h' : 'm/s'})`, angle: -90, position: 'insideLeft' }} />
-                          <Tooltip labelFormatter={(label) => new Date(label).toLocaleString()} />
+			<Tooltip
+  labelFormatter={(label) => {
+    const d = new Date(label);
+    return isNaN(d) ? 'Fecha inválida' : d.toLocaleString();
+  }}
+  formatter={(value) => `${value.toFixed(2)} ${windUnit === 'kmh' ? 'km/h' : 'm/s'}`}
+/>
                           <Line type="monotone" dataKey="speed" stroke="#8884d8" name="Velocidad del Viento (m/s)" dot={false} />
     		</LineChart>
                       </ResponsiveContainer>
