@@ -317,9 +317,25 @@ function MapSelector({ onAreaSelect, selectedArea, isSelecting, setIsSelecting }
 // Componente principal
 function App() {
   const [selectedArea, setSelectedArea] = useState(null);
+  const today = new Date();
+  const defaultEndDate = new Date(today);
+  defaultEndDate.setDate(today.getDate() - 3);
+
+  const defaultStartDate = new Date(defaultEndDate);
+  defaultStartDate.setDate(defaultEndDate.getDate() - 15);
+
+  const formatISO = (date) => date.toISOString().slice(0, 10); // YYYY-MM-DD
+
   const [dateRange, setDateRange] = useState({
-    startDate: '2024-01-01',
-    endDate: '2024-01-07'
+  startDate: formatISO(defaultStartDate),
+  endDate: formatISO(defaultEndDate)
+  });
+
+{dateValidationError && (
+  <Alert variant="destructive" className="mt-2">
+    <AlertDescription>{dateValidationError}</AlertDescription>
+  </Alert>
+)}
   });
   const [analysisData, setAnalysisData] = useState({
     analysis: {},
@@ -382,6 +398,30 @@ function App() {
       console.log('❌ Error: No area selected.');
       return;
     }
+
+// Validar fechas antes de procesar
+const start = new Date(dateRange.startDate);
+const end = new Date(dateRange.endDate);
+const diffInDays = (end - start) / (1000 * 60 * 60 * 24);
+
+// Validaciones secuenciales
+if (isNaN(start) || isNaN(end)) {
+  setError('Las fechas seleccionadas no son válidas.');
+  console.log('❌ Error: Fecha inválida');
+  return;
+}
+
+if (end <= start) {
+  setError('La fecha de fin debe ser posterior a la fecha de inicio.');
+  console.log('❌ Error: Fecha de fin anterior o igual a la de inicio');
+  return;
+}
+
+if (diffInDays > 30) {
+  setError('El rango de fechas no puede superar los 30 días. Selecciona un período más corto.');
+  console.log(`❌ Error: Rango de fechas de ${diffInDays.toFixed(1)} días excede el límite de 30.`);
+  return;
+}
 
     // Hacemos una copia profunda del área seleccionada
 let areaToAnalyze = selectedArea.map(coord => [...coord]);
@@ -514,15 +554,7 @@ if (latDiff + 1e-10 < minThreshold || lonDiff + 1e-10 < minThreshold) {
     }
   };
 
-  const generateMockWindData = () => {
-    // Generar datos de viento simulados para demostración
-    const hours = 24 * 7; // Una semana
-    const wind_speeds = [];
-    const wind_directions = [];
-    const timestamps = [];
-
-    for (let i = 0; i < hours; i++) {
-      // Simular variación diurna y aleatoria
+  // Simular variación diurna y aleatoria
       const baseSpeed = 6 + 2 * Math.sin(i * 2 * Math.PI / 24) + Math.random() * 3;
       wind_speeds.push(Math.max(0, baseSpeed));
       wind_directions.push(Math.random() * 360);
@@ -574,7 +606,23 @@ if (latDiff + 1e-10 < minThreshold || lonDiff + 1e-10 < minThreshold) {
   ? prepareChartData(analysisData.analysis, analysisData.era5Data)
   : { timeSeries: [], weibullHistogram: [], windRose: [], hourlyPatterns: [] };
 
+  const getDateValidationError = () => {
+  const start = new Date(dateRange.startDate);
+  const end = new Date(dateRange.endDate);
+
+  if (isNaN(start) || isNaN(end)) return 'Las fechas no son válidas.';
+  if (end <= start) return 'La fecha de fin debe ser posterior a la de inicio.';
+  
+  const diffInDays = (end - start) / (1000 * 60 * 60 * 24);
+  if (diffInDays > 30) return 'El rango de fechas no puede superar los 30 días.';
+
+  return null;
+  };
+
+   const dateValidationError = getDateValidationError();
+
   return (
+
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50">
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
@@ -709,6 +757,12 @@ if (latDiff + 1e-10 < minThreshold || lonDiff + 1e-10 < minThreshold) {
                       onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
                     />
                   </div>
+		
+		<Alert variant="info" className="mt-2">
+      		<AlertDescription>
+        		Este rango de fechas (últimos 15 días hasta 3 días antes de hoy) está recomendado para garantizar disponibilidad de datos ERA5 y una respuesta rápida del sistema.
+      		</AlertDescription>
+    		</Alert>
                 </CardContent>
               </Card>
 
@@ -751,7 +805,7 @@ if (latDiff + 1e-10 < minThreshold || lonDiff + 1e-10 < minThreshold) {
                 <Button 
                   onClick={handleAnalysis} 
                   className="w-full" 
-                  disabled={loading || !selectedArea}
+                  disabled={loading || !selectedArea || dateValidationError}
                 >
                   {loading ? 'Analizando...' : 'Iniciar Análisis Eólico'}
                 </Button>
