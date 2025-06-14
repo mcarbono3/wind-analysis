@@ -377,9 +377,10 @@ if (latDiff === 0 && lonDiff === 0) {
   // recalcula después de expandir
   latDiff = Math.abs(areaToAnalyze[1][0] - areaToAnalyze[0][0]);
   lonDiff = Math.abs(areaToAnalyze[1][1] - areaToAnalyze[0][1]);
+	
 }
 
-if (latDiff < minThreshold || lonDiff < minThreshold) {
+if (latDiff + 1e-10 < minThreshold || lonDiff + 1e-10 < minThreshold) {
   setError('El área seleccionada es demasiado pequeña. Por favor selecciona un área más grande.');
   console.log('❌ Error: Selected area is too small. LatDiff:', latDiff, 'LonDiff:', lonDiff);
   return;
