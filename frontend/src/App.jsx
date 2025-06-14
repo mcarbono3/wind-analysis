@@ -615,7 +615,9 @@ if (latDiff + 1e-10 < minThreshold || lonDiff + 1e-10 < minThreshold) {
 
    const dateValidationError = getDateValidationError();
 
-  return (
+  console.log('🧪 Estado del botón - loading:', loading, '| selectedArea:', selectedArea, '| dateValidationError:', dateValidationError);
+
+return (
 
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50">
       {/* Header */}
@@ -702,23 +704,25 @@ if (latDiff + 1e-10 < minThreshold || lonDiff + 1e-10 < minThreshold) {
                     >
                       {isMapSelecting ? 'Seleccionando...' : 'Iniciar Selección'}
                     </Button>
-                    {selectedArea && (
-                      <Button 
-                        onClick={handleClearSelection} 
-                        variant="outline"
-                        size="icon"
-                      >
-                        <XCircle className="h-4 w-4" />
-{selectedArea && (
-  <Button
-    onClick={() => setActiveTab('analysis')}
-    className="bg-emerald-600 hover:bg-emerald-700 text-white"
-  >
-    Continuar
-  </Button>
+		  {selectedArea && (
+  <>
+    <Button 
+      onClick={handleClearSelection} 
+      variant="outline"
+      size="icon"
+    >
+      <XCircle className="h-4 w-4" />
+    </Button>
+
+    <Button
+      onClick={() => setActiveTab('analysis')}
+      className="bg-emerald-600 hover:bg-emerald-700 text-white"
+    >
+      Continuar
+    </Button>
+  </>
 )}
-                      </Button>
-                    )}
+
                   </div>
                   {selectedArea && (
                     <Badge variant="secondary">
