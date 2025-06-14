@@ -361,11 +361,19 @@ function App() {
     const latDiff = Math.abs(selectedArea[1][0] - selectedArea[0][0]);
     const lonDiff = Math.abs(selectedArea[1][1] - selectedArea[0][1]);
     
-    if (latDiff < 0.005 || lonDiff < 0.005) {
-      setError('El área seleccionada es demasiado pequeña. Por favor selecciona un área más grande.');
-      console.log('❌ Error: Selected area is too small. LatDiff:', latDiff, 'LonDiff:', lonDiff);
-      return;
-    }
+   const minThreshold = 0.005;
+if (latDiff === 0 && lonDiff === 0) {
+  // Fuerza una expansión mínima del área si es un punto
+  selectedArea[0][0] -= minThreshold / 2;
+  selectedArea[0][1] -= minThreshold / 2;
+  selectedArea[1][0] += minThreshold / 2;
+  selectedArea[1][1] += minThreshold / 2;
+  console.log('⚠️ Área puntual detectada. Se expandió automáticamente a:', selectedArea);
+} else if (latDiff < minThreshold || lonDiff < minThreshold) {
+  setError('El área seleccionada es demasiado pequeña. Por favor selecciona un área más grande.');
+  console.log('❌ Error: Selected area is too small. LatDiff:', latDiff, 'LonDiff:', lonDiff);
+  return;
+}
 
     setLoading(true);
     setError(null);
