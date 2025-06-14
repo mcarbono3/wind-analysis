@@ -75,6 +75,7 @@ const normalizeAnalysisData = (rawAnalysis) => {
     return null;
   }
   
+    const u = unit;
   return {
     basic_statistics: rawAnalysis.basic_statistics || {},
     capacity_factor: rawAnalysis.capacity_factor || {},
@@ -90,7 +91,7 @@ const normalizeAnalysisData = (rawAnalysis) => {
 };
 
 // Función para extraer estadísticas de la estructura REAL del backend - PROBADO Y FUNCIONA
-const extractStatistics = (analysis) => {
+const extractStatistics = (analysis, unit = 'kmh') => {
   if (!analysis) return {};
   
   const basicStats = safeGet(analysis, 'basic_statistics', {});
@@ -150,7 +151,7 @@ const extractViability = (analysis) => {
 };
 
 // Función para preparar datos de gráficos - PENDIENTE DE PRUEBA EN VERSION V8d
-const prepareChartData = (analysis, era5Data) => {
+const prepareChartData = (analysis, era5Data, unit = 'kmh') => {
   if (!analysis || !era5Data) return { timeSeries: [], weibullHistogram: [], windRose: [], hourlyPatterns: [] };
   
   const timeSeries = safeArray(analysis.time_series);
@@ -165,14 +166,14 @@ const prepareChartData = (analysis, era5Data) => {
     if (timestamps[i] && windSpeeds100m[i] !== undefined) {
       timeSeriesData.push({
         time: timestamps[i],
-        speed: safeNumber(windSpeeds100m[i])
+        speed: convertWindSpeed(windSpeeds100m[i], unit)
       });
     }
   }
 
   // Preparar datos de histograma de Weibull con múltiples fuentes posibles - PENDIENTE DE PRUEBA EN VERSION V8d
   const weibullData = safeArray(analysis.weibull_analysis?.plot_data?.x_values.map((x, i) => ({
-    speed_bin: x,
+    speed_bin: convertWindSpeed(x, unit),
     frequency: analysis.weibull_analysis.plot_data.y_values[i]
   })));
   
@@ -186,7 +187,7 @@ const prepareChartData = (analysis, era5Data) => {
     Object.entries(hourlyPatterns.mean_by_hour).forEach(([hour, speed]) => {
       hourlyData.push({
         hour: parseInt(hour),
-        speed: safeNumber(speed)
+        speed: convertWindSpeed(speed, unit)
       });
     });
   }
@@ -317,6 +318,16 @@ function MapSelector({ onAreaSelect, selectedArea, isSelecting, setIsSelecting }
 // Componente principal
 function App() {
   const [selectedArea, setSelectedArea] = useState(null);
+// ✅ CAMBIO: Unidad de velocidad del viento (por defecto km/h)
+const [windUnit, setWindUnit] = useState('kmh');
+
+// ✅ CAMBIO: Función para convertir entre m/s y km/h
+const convertWindSpeed = (value, unit) => {
+  const v = safeNumber(value);
+  return unit === 'kmh' ? v * 3.6 : v;
+};
+// ✅ CAMBIO: Unidad de velocidad del viento (por defecto km/h)
+
   const today = new Date();
   const defaultEndDate = new Date(today);
   defaultEndDate.setDate(today.getDate() - 3);
@@ -332,6 +343,8 @@ function App() {
   });
 
   const [analysisData, setAnalysisData] = useState({
+// ✅ CAMBIO: Unidad de velocidad del viento (por defecto km/h)
+
     analysis: {},
     location: {},
     era5Data: {
@@ -583,8 +596,8 @@ if (latDiff + 1e-10 < minThreshold || lonDiff + 1e-10 < minThreshold) {
 
   // ✅ AÑADE ESTA LÍNEA AQUÍ (ANTES DEL return)
   const viability = extractViability(analysisData.analysis);
-    const chartData = analysisData.analysis && analysisData.era5Data
-  ? prepareChartData(analysisData.analysis, analysisData.era5Data)
+  const chartData = analysisData.analysis && analysisData.era5Data
+  ? prepareChartData(analysisData.analysis, analysisData.era5Data, windUnit)
   : { timeSeries: [], weibullHistogram: [], windRose: [], hourlyPatterns: [] };
 
   const getDateValidationError = () => {
@@ -661,7 +674,7 @@ if (latDiff + 1e-10 < minThreshold || lonDiff + 1e-10 < minThreshold) {
                     zoom={7}
                     style={{ height: '100%', width: '100%' }}
                     dragging={!isMapSelecting} // Controlar el arrastre del mapa con el estado isMapSelecting
-                    className={isMapSelecting ? 'cursor-crosshair' : 'cursor-grab'}
+                    className={isMapSelecting ? 'cursor-default' : 'cursor-grab'}
                   >
                     <TileLayer
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -696,6 +709,14 @@ if (latDiff + 1e-10 < minThreshold || lonDiff + 1e-10 < minThreshold) {
                         size="icon"
                       >
                         <XCircle className="h-4 w-4" />
+{selectedArea && (
+  <Button
+    onClick={() => setActiveTab('analysis')}
+    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+  >
+    Continuar
+  </Button>
+)}
                       </Button>
                     )}
                   </div>
@@ -770,6 +791,18 @@ if (latDiff + 1e-10 < minThreshold || lonDiff + 1e-10 < minThreshold) {
                     <div className="flex items-center space-x-2">
                       <input type="checkbox" id="temperature" defaultChecked />
                       <Label htmlFor="temperature">Temperatura</Label>
+<div className="mt-4">
+  <Label htmlFor="windUnit">Unidades de Velocidad del Viento</Label>
+  <select
+    id="windUnit"
+    value={windUnit}
+    onChange={(e) => setWindUnit(e.target.value)}
+    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm"
+  >
+    <option value="kmh">km/h</option>
+    <option value="ms">m/s</option>
+  </select>
+</div>
                     </div>
                   </div>
                 </CardContent>
@@ -827,7 +860,7 @@ if (latDiff + 1e-10 < minThreshold || lonDiff + 1e-10 < minThreshold) {
   		  <p className="font-bold">Datos de viabilidad no disponibles</p>
  		 </div>
 		)}
-                    <p className="text-sm text-gray-700"><strong>Velocidad Promedio del Viento (100m):</strong> {formatNumber(extractStatistics(analysisData.analysis).mean_wind_speed_100m)} m/s</p>
+                    <p className="text-sm text-gray-700"><strong>Velocidad Promedio del Viento (100m):</strong> {formatNumber(extractStatistics(analysisData.analysis, windUnit).mean_wind_speed_100m)} m/s</p>
                     <p className="text-sm text-gray-700"><strong>Nivel de Viabilidad:</strong> {viability.level || 'No disponible'}</p>
                   </CardContent>
                 </Card>
@@ -838,18 +871,18 @@ if (latDiff + 1e-10 < minThreshold || lonDiff + 1e-10 < minThreshold) {
                     <CardTitle>Estadísticas Principales</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
-                      <p><strong>Velocidad Media del Viento (10m):</strong> {formatNumber(extractStatistics(analysisData.analysis).mean_wind_speed_10m)} m/s</p>
-                      <p><strong>Velocidad Media del Viento (100m):</strong> {formatNumber(extractStatistics(analysisData.analysis).mean_wind_speed_100m)} m/s</p>
-                      <p><strong>Velocidad Máxima del Viento (10m):</strong> {formatNumber(extractStatistics(analysisData.analysis).max_wind_speed_10m)} m/s</p>
-                      <p><strong>Velocidad Máxima del Viento (100m):</strong> {formatNumber(extractStatistics(analysisData.analysis).max_wind_speed_100m)} m/s</p>
-                      <p><strong>Desviación Estándar (10m):</strong> {formatNumber(extractStatistics(analysisData.analysis).std_wind_speed_10m)} m/s</p>
-                      <p><strong>Desviación Estándar (100m):</strong> {formatNumber(extractStatistics(analysisData.analysis).std_wind_speed_100m)} m/s</p>
-                      <p><strong>Densidad de Potencia (10m):</strong> {formatNumber(extractStatistics(analysisData.analysis).power_density_10m)} W/m²</p>
-                      <p><strong>Densidad de Potencia (100m):</strong> {formatNumber(extractStatistics(analysisData.analysis).power_density_100m)} W/m²</p>
-                      <p><strong>Factor de Capacidad (10m):</strong> {formatPercentage(extractStatistics(analysisData.analysis).capacity_factor_10m)}</p>
-                      <p><strong>Factor de Capacidad (100m):</strong> {formatPercentage(extractStatistics(analysisData.analysis).capacity_factor_100m)}</p>
-                      <p><strong>Intensidad de Turbulencia (10m):</strong> {formatPercentage(extractStatistics(analysisData.analysis).turbulence_intensity_10m)}</p>
-                      <p><strong>Intensidad de Turbulencia (100m):</strong> {formatPercentage(extractStatistics(analysisData.analysis).turbulence_intensity_100m)}</p>
+                      <p><strong>Velocidad Media del Viento (10m):</strong> {formatNumber(extractStatistics(analysisData.analysis, windUnit).mean_wind_speed_10m)} m/s</p>
+                      <p><strong>Velocidad Media del Viento (100m):</strong> {formatNumber(extractStatistics(analysisData.analysis, windUnit).mean_wind_speed_100m)} m/s</p>
+                      <p><strong>Velocidad Máxima del Viento (10m):</strong> {formatNumber(extractStatistics(analysisData.analysis, windUnit).max_wind_speed_10m)} m/s</p>
+                      <p><strong>Velocidad Máxima del Viento (100m):</strong> {formatNumber(extractStatistics(analysisData.analysis, windUnit).max_wind_speed_100m)} m/s</p>
+                      <p><strong>Desviación Estándar (10m):</strong> {formatNumber(extractStatistics(analysisData.analysis, windUnit).std_wind_speed_10m)} m/s</p>
+                      <p><strong>Desviación Estándar (100m):</strong> {formatNumber(extractStatistics(analysisData.analysis, windUnit).std_wind_speed_100m)} m/s</p>
+                      <p><strong>Densidad de Potencia (10m):</strong> {formatNumber(extractStatistics(analysisData.analysis, windUnit).power_density_10m)} W/m²</p>
+                      <p><strong>Densidad de Potencia (100m):</strong> {formatNumber(extractStatistics(analysisData.analysis, windUnit).power_density_100m)} W/m²</p>
+                      <p><strong>Factor de Capacidad (10m):</strong> {formatPercentage(extractStatistics(analysisData.analysis, windUnit).capacity_factor_10m)}</p>
+                      <p><strong>Factor de Capacidad (100m):</strong> {formatPercentage(extractStatistics(analysisData.analysis, windUnit).capacity_factor_100m)}</p>
+                      <p><strong>Intensidad de Turbulencia (10m):</strong> {formatPercentage(extractStatistics(analysisData.analysis, windUnit).turbulence_intensity_10m)}</p>
+                      <p><strong>Intensidad de Turbulencia (100m):</strong> {formatPercentage(extractStatistics(analysisData.analysis, windUnit).turbulence_intensity_100m)}</p>
                   </CardContent>
                 </Card>
 
