@@ -66,7 +66,11 @@ const formatDateTime = (dateString, defaultText = 'Fecha inválida') => {
     return defaultText;
   }
 };
-
+// ✅ Debe ir aquí:
+const convertWindSpeed = (value, unit) => {
+  const v = safeNumber(value);
+  return unit === 'kmh' ? v * 3.6 : v;
+};
 // Función para normalizar la estructura de datos del análisis
 const normalizeAnalysisData = (rawAnalysis) => {
   console.log('🔄 Normalizing analysis data:', rawAnalysis);
@@ -91,44 +95,35 @@ const normalizeAnalysisData = (rawAnalysis) => {
 };
 
 // Función para extraer estadísticas de la estructura REAL del backend - PROBADO Y FUNCIONA
+
 const extractStatistics = (analysis, unit = 'kmh') => {
   if (!analysis) return {};
-  
+
   const basicStats = safeGet(analysis, 'basic_statistics', {});
   const capacityFactor = safeGet(analysis, 'capacity_factor', {});
   const powerDensity = safeGet(analysis, 'power_density', {});
   const weibullAnalysis = safeGet(analysis, 'weibull_analysis', {});
-  const turbulenceAnalysis = safeGet(analysis, 'turbulence_analysis', {}); // Added this line
-
-  console.log('Extracting statistics from:', { basicStats, capacityFactor, powerDensity, weibullAnalysis, turbulenceAnalysis }); // Updated log
+  const turbulenceAnalysis = safeGet(analysis, 'turbulence_analysis', {});
 
   return {
-    // Estadísticas básicas
-    mean_wind_speed_10m: safeNumber(basicStats.mean_wind_speed_10m || basicStats.mean),
-    mean_wind_speed_100m: safeNumber(basicStats.mean_wind_speed_100m || basicStats.mean),
-    max_wind_speed_10m: safeNumber(basicStats.max_wind_speed_10m || basicStats.max),
-    max_wind_speed_100m: safeNumber(basicStats.max_wind_speed_100m || basicStats.max),
-    std_wind_speed_10m: safeNumber(basicStats.std_wind_speed_10m || basicStats.std),
-    std_wind_speed_100m: safeNumber(basicStats.std_wind_speed_100m || basicStats.std),
-    
-    // Factor de capacidad
+    mean_wind_speed_10m: convertWindSpeed(basicStats.mean_wind_speed_10m || basicStats.mean, unit),
+    mean_wind_speed_100m: convertWindSpeed(basicStats.mean_wind_speed_100m || basicStats.mean, unit),
+    max_wind_speed_10m: convertWindSpeed(basicStats.max_wind_speed_10m || basicStats.max, unit),
+    max_wind_speed_100m: convertWindSpeed(basicStats.max_wind_speed_100m || basicStats.max, unit),
+    std_wind_speed_10m: convertWindSpeed(basicStats.std_wind_speed_10m || basicStats.std, unit),
+    std_wind_speed_100m: convertWindSpeed(basicStats.std_wind_speed_100m || basicStats.std, unit),
     capacity_factor_10m: safeNumber(capacityFactor.capacity_factor),
     capacity_factor_100m: safeNumber(capacityFactor.capacity_factor),
-    
-    // Densidad de potencia
     power_density_10m: safeNumber(powerDensity.mean_power_density),
     power_density_100m: safeNumber(powerDensity.mean_power_density),
-    
-    // Parámetros de Weibull
     weibull_k_10m: safeNumber(weibullAnalysis.k_10m || weibullAnalysis.k),
-    weibull_c_10m: safeNumber(weibullAnalysis.c_10m || weibullAnalysis.c),
+    weibull_c_10m: convertWindSpeed(weibullAnalysis.c_10m || weibullAnalysis.c, unit),
     weibull_k_100m: safeNumber(weibullAnalysis.k_100m || weibullAnalysis.k),
-    weibull_c_100m: safeNumber(weibullAnalysis.c_100m || weibullAnalysis.c),
-
-    // Intensidad de Turbulencia
+    weibull_c_100m: convertWindSpeed(weibullAnalysis.c_100m || weibullAnalysis.c, unit),
     turbulence_intensity_10m: safeNumber(turbulenceAnalysis.overall?.turbulence_intensity),
     turbulence_intensity_100m: safeNumber(turbulenceAnalysis.overall?.turbulence_intensity)
   };
+
 };
 
 
@@ -901,8 +896,8 @@ return (
    				 <BarChart data={chartData.weibullHistogram}>
      				 <CartesianGrid strokeDasharray="3 3" />
      				 <XAxis dataKey="speed_bin" />
-     				 <YAxis />
-    			  <Tooltip />
+     				 <YAxis label={{ value: `Velocidad (${windUnit === 'kmh' ? 'km/h' : 'm/s'})`, angle: -90, position: 'insideLeft' }} />
+    			  <Tooltip formatter={(value) => `${value.toFixed(2)} ${windUnit === 'kmh' ? 'km/h' : 'm/s'}`} />
     			  <Bar dataKey="frequency" fill="#8884d8" name="Frecuencia" />
     			</BarChart>
   			</ResponsiveContainer>
@@ -920,10 +915,10 @@ return (
                       <CardContent>
                     {analysisData.era5Data?.wind_speed_100m ? (
                       <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={analysisData.era5Data.wind_speed_100m.map((speed, index) => ({ time: analysisData.era5Data.timestamps[index], speed }))}>
+                        <LineChart data={analysisData.era5Data.wind_speed_100m.map((speed, index) => ({ time: analysisData.era5Data.timestamps[index], speed: convertWindSpeed(speed, windUnit) }))}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="time" tickFormatter={(tick) => new Date(tick).toLocaleDateString()} />
-                          <YAxis />
+                          <YAxis label={{ value: `Velocidad (${windUnit === 'kmh' ? 'km/h' : 'm/s'})`, angle: -90, position: 'insideLeft' }} />
                           <Tooltip labelFormatter={(label) => new Date(label).toLocaleString()} />
                           <Line type="monotone" dataKey="speed" stroke="#8884d8" name="Velocidad del Viento (m/s)" dot={false} />
     		</LineChart>
@@ -945,8 +940,8 @@ return (
    			       <BarChart data={chartData.hourlyPatterns}>
    				   <CartesianGrid strokeDasharray="3 3" />
      				 <XAxis dataKey="hour" />
-     				 <YAxis />
-     			     <Tooltip />
+     				 <YAxis label={{ value: `Velocidad (${windUnit === 'kmh' ? 'km/h' : 'm/s'})`, angle: -90, position: 'insideLeft' }} />
+     			     <Tooltip formatter={(value) => `${value.toFixed(2)} ${windUnit === 'kmh' ? 'km/h' : 'm/s'}`} />
                           <Bar dataKey="speed" fill="#82ca9d" name="Velocidad Media" />
                         </BarChart>
                       </ResponsiveContainer>
@@ -967,8 +962,8 @@ return (
                                       <BarChart data={chartData.windRose}>
                                          <CartesianGrid strokeDasharray="3 3" />
                                      <XAxis dataKey="direction" />
-                                    <YAxis />
-                                  <Tooltip />
+                                    <YAxis label={{ value: `Velocidad (${windUnit === 'kmh' ? 'km/h' : 'm/s'})`, angle: -90, position: 'insideLeft' }} />
+                                  <Tooltip formatter={(value) => `${value.toFixed(2)} ${windUnit === 'kmh' ? 'km/h' : 'm/s'}`} />
                              <Bar dataKey="frequency" fill="#8884d8" name="Frecuencia (%)" />
                           </BarChart>
                        </ResponsiveContainer>
