@@ -206,14 +206,30 @@ function MapSelector({ onAreaSelect, selectedArea, isSelecting, setIsSelecting }
   const [startPoint, setStartPoint] = useState(null);
   const [currentBounds, setCurrentBounds] = useState(null);
   const map = useMap();
-  
   const [touchStartPoint, setTouchStartPoint] = useState(null);
+
+  useEffect(() => {
+    console.log('🗺️ MapSelector useEffect - isSelecting:', isSelecting);
+    if (isSelecting) {
+      console.log('🗺️ MapSelector: Disabling map interactions');
+      map.dragging.disable();
+      map.doubleClickZoom.disable();
+      map.scrollWheelZoom.disable();
+    } else {
+      console.log('🗺️ MapSelector: Enabling map interactions');
+      map.dragging.enable();
+      map.doubleClickZoom.enable();
+      map.scrollWheelZoom.enable();
+    }
+  }, [isSelecting, map]);
 
   useMapEvents({
     mousedown: (e) => {
+      console.log('🗺️ MapSelector mousedown event:', e.latlng, 'isSelecting:', isSelecting);
       if (isSelecting) {
         setStartPoint([e.latlng.lat, e.latlng.lng]);
         setCurrentBounds([[e.latlng.lat, e.latlng.lng], [e.latlng.lat, e.latlng.lng]]);
+        console.log('🗺️ MapSelector: Selection started at', e.latlng);
       }
     },
     mousemove: (e) => {
@@ -225,12 +241,20 @@ function MapSelector({ onAreaSelect, selectedArea, isSelecting, setIsSelecting }
         setCurrentBounds(newBounds);
       }
     },
-    mouseup: () => {
-      if (isSelecting && currentBounds) {
-        onAreaSelect(currentBounds);
+    mouseup: (e) => {
+      console.log('🗺️ MapSelector mouseup event:', e.latlng, 'isSelecting:', isSelecting, 'startPoint:', startPoint);
+      if (isSelecting && startPoint) {
+        const endPoint = [e.latlng.lat, e.latlng.lng];
+        const bounds = [
+          [Math.min(startPoint[0], endPoint[0]), Math.min(startPoint[1], endPoint[1])],
+          [Math.max(startPoint[0], endPoint[0]), Math.max(startPoint[1], endPoint[1])]
+        ];
+        console.log('🗺️ MapSelector - Selected bounds:', bounds);
+        onAreaSelect(bounds);
         setIsSelecting(false);
         setStartPoint(null);
         setCurrentBounds(null);
+        console.log('🗺️ MapSelector: Selection finished');
       }
     },
     touchstart: (e) => {
@@ -259,11 +283,15 @@ function MapSelector({ onAreaSelect, selectedArea, isSelecting, setIsSelecting }
       }
     },
     click: (e) => {
-      if (isSelecting && !startPoint && !touchStartPoint) {
+      console.log('🗺️ MapSelector click event:', e.latlng, 'isSelecting:', isSelecting, 'startPoint:', startPoint);
+      if (isSelecting && !startPoint) {
         const point = [e.latlng.lat, e.latlng.lng];
+        // Crear un área mínima de 0.02 grados para evitar el error de área muy pequeña
         const bounds = [[point[0] - 0.02, point[1] - 0.02], [point[0] + 0.02, point[1] + 0.02]];
+        console.log('🗺️ MapSelector - Selected point bounds (expanded):', bounds);
         onAreaSelect(bounds);
         setIsSelecting(false);
+        console.log('🗺️ MapSelector: Point selection finished');
       }
     }
   });
@@ -626,24 +654,14 @@ if (latDiff + 1e-10 < minThreshold || lonDiff + 1e-10 < minThreshold) {
                   <span>Seleccionar Área de Análisis</span>
                 </CardTitle>
               </CardHeader>
-             
-	      <CardContent>
-                 <div className="h-96 rounded-lg overflow-hidden border space-y-4">
-   		 {isMapSelecting && (
-     		 <div className="bg-green-600 text-white text-sm px-4 py-2 rounded-md shadow-md text-center">
-      		  🟢 Modo de selección activado – Toca y arrastra para seleccionar un área
-      		</div>
-   		 )}
-                  
-		<MapContainer
-		   center={[caribbeanBounds.center.lat, caribbeanBounds.center.lon]}
-  		   zoom={7}
-                     style={{ height: '100%', width: '100%' }}
- 		   dragging={!isMapSelecting}
-  		   scrollWheelZoom={!isMapSelecting}
-  		   touchZoom={!isMapSelecting}
- 		   doubleClickZoom={!isMapSelecting}
-  		   className={isMapSelecting ? 'cursor-crosshair' : 'cursor-grab'}
+              <CardContent>
+                <div className="h-96 rounded-lg overflow-hidden border">
+                  <MapContainer
+                    center={[caribbeanBounds.center.lat, caribbeanBounds.center.lon]}
+                    zoom={7}
+                    style={{ height: '100%', width: '100%' }}
+                    dragging={!isMapSelecting} // Controlar el arrastre del mapa con el estado isMapSelecting
+                    className={isMapSelecting ? 'cursor-crosshair' : 'cursor-grab'}
                   >
                     <TileLayer
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -657,7 +675,7 @@ if (latDiff + 1e-10 < minThreshold || lonDiff + 1e-10 < minThreshold) {
                     />
                   </MapContainer>
                 </div>
-	       <div className="mt-4 flex justify-between items-center">
+                <div className="mt-4 flex justify-between items-center">
                   <p className="text-sm text-gray-600">
                     {isMapSelecting ? 'Haz clic y arrastra para seleccionar un área' : 'Haz clic en "Iniciar Selección" para dibujar un área'}
                   </p>
