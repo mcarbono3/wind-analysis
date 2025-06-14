@@ -548,19 +548,6 @@ if (latDiff + 1e-10 < minThreshold || lonDiff + 1e-10 < minThreshold) {
     }
   };
 
-  // Simular variación diurna y aleatoria
-      const baseSpeed = 6 + 2 * Math.sin(i * 2 * Math.PI / 24) + Math.random() * 3;
-      wind_speeds.push(Math.max(0, baseSpeed));
-      wind_directions.push(Math.random() * 360);
-      
-      const date = new Date(dateRange.startDate);
-      date.setHours(date.getHours() + i);
-      timestamps.push(date.toISOString());
-    }
-
-    return { wind_speeds, wind_directions, timestamps };
-  };
-
   const getViabilityColor = (level) => {
     if (!level) return 'bg-gray-500';
     
