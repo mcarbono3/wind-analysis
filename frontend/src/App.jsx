@@ -778,33 +778,37 @@ return (
                   <CardTitle>Variables de Análisis</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex items-center space-x-2">
-                      <input type="checkbox" id="wind_speed" defaultChecked />
-                      <Label htmlFor="wind_speed">Velocidad del viento (10m, 100m)</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <input type="checkbox" id="pressure" defaultChecked />
-                      <Label htmlFor="pressure">Presión Atmosférica</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <input type="checkbox" id="temperature" defaultChecked />
-                      <Label htmlFor="temperature">Temperatura</Label>
-<div className="mt-4">
-  <Label htmlFor="windUnit">Unidades de Velocidad del Viento</Label>
-  <select
-    id="windUnit"
-    value={windUnit}
-    onChange={(e) => setWindUnit(e.target.value)}
-    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm"
-  >
-    <option value="kmh">km/h</option>
-    <option value="ms">m/s</option>
-  </select>
-</div>
-                    </div>
-                  </div>
-                </CardContent>
+		<div className="space-y-3">
+ 		 <div className="flex items-center space-x-2">
+ 	   <input type="checkbox" id="wind_speed" defaultChecked />
+  	  <Label htmlFor="wind_speed">Velocidad del viento (10m, 100m)</Label>
+  	</div>
+  	<div className="flex items-center space-x-2">
+   	 <input type="checkbox" id="pressure" defaultChecked />
+	    <Label htmlFor="pressure">Presión Atmosférica</Label>
+	  </div>
+	  <div className="flex items-center space-x-2">
+ 	   <input type="checkbox" id="temperature" defaultChecked />
+  	  <Label htmlFor="temperature">Temperatura</Label>
+  	</div>
+
+ 	 {/* 🧭 Selector de unidades con espaciado separado y orden visual claro */}
+  	<div className="pt-4">
+  	  <Label htmlFor="windUnit" className="block mb-1 text-sm font-medium text-gray-700">
+      Unidades de Velocidad del Viento
+    	</Label>
+   	 <select
+   	   id="windUnit"
+    	  value={windUnit}
+    	  onChange={(e) => setWindUnit(e.target.value)}
+    		  className="block w-full border border-gray-300 rounded-md shadow-sm p-2"
+   		 >
+     		 <option value="kmh">km/h</option>
+     		 <option value="ms">m/s</option>
+    		</select>
+  		</div>
+		</div>
+                 </CardContent>
               </Card>
             </div>
 
@@ -859,7 +863,9 @@ return (
   		  <p className="font-bold">Datos de viabilidad no disponibles</p>
  		 </div>
 		)}
-                    <p className="text-sm text-gray-700"><strong>Velocidad Promedio del Viento (100m):</strong> {formatNumber(extractStatistics(analysisData.analysis, windUnit).mean_wind_speed_100m)} m/s</p>
+		<p className="text-sm text-gray-700">
+  		<strong>Velocidad Promedio del Viento (100m):</strong> {formatNumber(extractStatistics(analysisData.analysis, windUnit).mean_wind_speed_100m)} {windUnit === 'kmh' ? 'km/h' : 'm/s'}
+		</p>
                     <p className="text-sm text-gray-700"><strong>Nivel de Viabilidad:</strong> {viability.level || 'No disponible'}</p>
                   </CardContent>
                 </Card>
