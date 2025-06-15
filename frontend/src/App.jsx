@@ -519,11 +519,13 @@ if (latDiff + 1e-10 < minThreshold || lonDiff + 1e-10 < minThreshold) {
         throw new Error('Los datos de viento recibidos no tienen el formato esperado');
       }
     
-     // ✅ Agrega esta llamada al análisis
-     const analysisResponse = await axios.post(`${API_BASE_URL}/wind-analysis`, {
-      wind_speeds: era5Data.wind_speed_10m.flat(),
-      air_density: 1.225
-     });
+// ✅ Agrega esta llamada al análisis con direcciones y timestamps
+const analysisResponse = await axios.post(`${API_BASE_URL}/wind-analysis`, {
+  wind_speeds: era5Data.wind_speed_10m.flat(),
+  wind_directions: era5Data.wind_direction_10m.flat(),  // ✅ NUEVA LÍNEA
+  timestamps: era5Data.timestamps,                      // ✅ NUEVA LÍNEA
+  air_density: 1.225
+});
 
       const analysisResult = analysisResponse.data.analysis || {};
       setAnalysisData(prevData => ({
