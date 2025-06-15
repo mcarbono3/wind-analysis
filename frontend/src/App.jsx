@@ -14,7 +14,7 @@ import 'leaflet/dist/leaflet.css';
 import './App.css';
 import { utils as XLSXUtils, writeFile as XLSXWriteFile } from "xlsx";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import 'jspdf-autotable';
 
 // Configuración de la API
 const API_BASE_URL = 'https://wind-analysis.onrender.com/api';
@@ -614,7 +614,21 @@ const analysisResponse = await axios.post(`${API_BASE_URL}/wind-analysis`, {
   };
 
   // ✅ AÑADE ESTA LÍNEA AQUÍ (ANTES DEL return)
-  const viability = extractViability(analysisData.analysis);
+  const extractViability = (analysis) => {
+  const viabilityData = safeGet(analysis, 'viability', {});
+  const level = viabilityData.viability_level || 'No disponible';
+  const message = viabilityData.viability_message || 'Sin mensaje';
+  const score = safeNumber(viabilityData.viability_score);
+  const recommendations = Array.isArray(viabilityData.recommendations)
+    ? viabilityData.recommendations
+    : String(viabilityData.recommendations || '')
+        .split(',')
+        .map(r => r.trim())
+        .filter(Boolean);
+
+  return { level, message, score, recommendations };
+};
+
   const chartData = analysisData.analysis && analysisData.era5Data
   ? prepareChartData(analysisData.analysis, analysisData.era5Data, windUnit)
   : { timeSeries: [], weibullHistogram: [], windRose: [], hourlyPatterns: [] };
@@ -981,35 +995,40 @@ return (
           <TabsContent value="results" className="space-y-6">
             {analysisData ? (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Resumen del Análisis */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <TrendingUp className="h-5 w-5" />
-                      <span>Resumen del Análisis</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <p><strong>Área Analizada:</strong> {analysisData?.location?.bounds?.[0]?.[0]?.toFixed(2) || 'N/A'}°, {analysisData?.location?.bounds?.[0]?.[1]?.toFixed(2) || 'N/A'}° a {analysisData?.location?.bounds?.[1]?.[0]?.toFixed(2) || 'N/A'}°, {analysisData?.location?.bounds?.[1]?.[1]?.toFixed(2) || 'N/A'}°</p>
-                    <p><strong>Fecha de Inicio:</strong> {dateRange?.startDate || 'N/A'}</p>
-                    <p><strong>Fecha de Fin:</strong> {dateRange?.endDate || 'N/A'}</p>
-		{viability?.level && viability?.recommendation ? (
-  			<div className={`p-3 rounded-md ${getViabilityColor(viability.level)} text-white flex items-center space-x-2`}>
- 			 <span className="text-2xl">{getViabilityIcon(viability.recommendation)}</span>
- 			   <p className="font-bold">{viability.recommendation}</p>
- 			 </div>
-			) : (
-		  <div className="p-3 rounded-md bg-gray-500 text-white flex items-center space-x-2">
-  		  <span className="text-2xl">❓</span>
-  		  <p className="font-bold">Datos de viabilidad no disponibles</p>
- 		 </div>
-		)}
-		<p className="text-sm text-gray-700">
-  		<strong>Velocidad Promedio del Viento (100m):</strong> {formatNumber(extractStatistics(analysisData.analysis, windUnit).mean_wind_speed_100m)} {windUnit === 'kmh' ? 'km/h' : 'm/s'}
-		</p>
-                    <p className="text-sm text-gray-700"><strong>Nivel de Viabilidad:</strong> {viability.level || 'No disponible'}</p>
-                  </CardContent>
-                </Card>
+                
+		{/* Resumen del Análisis */}
+<Card>
+  <CardHeader>
+    <CardTitle className="flex items-center space-x-2">
+      <TrendingUp className="h-5 w-5" />
+      <span>Resumen del Análisis</span>
+    </CardTitle>
+  </CardHeader>
+  <CardContent className="space-y-4">
+    <p><strong>Área Analizada:</strong> {areaCoords}</p>
+    <p><strong>Fecha de Inicio:</strong> {dateRange?.startDate || 'N/A'}</p>
+    <p><strong>Fecha de Fin:</strong> {dateRange?.endDate || 'N/A'}</p>
+
+    <div className={`p-3 rounded-md ${getViabilityColor(viability.level)} text-white flex flex-col space-y-1`}>
+      <div className="flex items-center space-x-2 text-lg font-semibold">
+        <span className="text-2xl">{getViabilityIcon(viability.message)}</span>
+        <span>{viability.message}</span>
+      </div>
+      <div className="text-sm">Nivel: <strong>{viability.level}</strong> | Puntuación: <strong>{viability.score}</strong></div>
+      {viability.recommendations.length > 0 && (
+        <ul className="list-disc pl-6 text-sm">
+          {viability.recommendations.map((rec, i) => (
+            <li key={i}>{rec}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+
+    <p className="text-sm text-gray-700">
+      <strong>Velocidad Promedio del Viento (100m):</strong> {formatNumber(stats.mean_wind_speed_100m)} {windUnit === 'kmh' ? 'km/h' : 'm/s'}
+    </p>
+  </CardContent>
+</Card>
 
                 {/* Estadísticas Principales */}
                 <Card>
@@ -1055,33 +1074,41 @@ return (
                   </CardContent>
                 </Card>
 
-                {/* Evolución Temporal del Viento (100m) - Contiene el codigo viejo porque al parecer la variable timestamps no viene desde backend */}
-                <Card className="lg:col-span-2">
-                  <CardHeader>
-                    <CardTitle>Evolución Temporal del Viento (100m)</CardTitle>
-                     </CardHeader>
-                      <CardContent>
-                    {analysisData.era5Data?.wind_speed_100m ? (
-                      <ResponsiveContainer width="100%" height={300}>
-                        <LineChart data={analysisData.era5Data.wind_speed_100m.map((speed, index) => ({ time: analysisData.era5Data.timestamps[index], speed: convertWindSpeed(speed, windUnit) }))}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="time" tickFormatter={(tick) => new Date(tick).toLocaleDateString()} />
-                          <YAxis label={{ value: `Velocidad (${windUnit === 'kmh' ? 'km/h' : 'm/s'})`, angle: -90, position: 'insideLeft' }} />
-			<Tooltip
-  labelFormatter={(label) => {
-    const d = new Date(label);
-    return isNaN(d) ? 'Fecha inválida' : d.toLocaleString();
-  }}
-  formatter={(value) => `${value.toFixed(2)} ${windUnit === 'kmh' ? 'km/h' : 'm/s'}`}
-/>
-                          <Line type="monotone" dataKey="speed" stroke="#8884d8" name="Velocidad del Viento (m/s)" dot={false} />
-    		</LineChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <p>No hay datos de evolución temporal disponibles.</p>
-                    )}
-                  </CardContent>
-                </Card>
+   {/* Evolución Temporal del Viento (10m) - Contiene el codigo actualizado */}
+<Card className="lg:col-span-2">
+  <CardHeader>
+    <CardTitle>Evolución Temporal del Viento (10m)</CardTitle>
+  </CardHeader>
+  <CardContent>
+    {analysisData.era5Data?.wind_speed_10m?.length > 0 ? (
+      <ResponsiveContainer width="100%" height={300}>
+        <LineChart
+          data={analysisData.era5Data.wind_speed_10m.map((speed, i) => ({
+            time: analysisData.era5Data.timestamps[i],
+            speed: convertWindSpeed(speed, windUnit)
+          }))}
+        >
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="time" tickFormatter={(t) => {
+            const d = new Date(t);
+            return isNaN(d) ? "?" : d.toLocaleDateString('es-CO');
+          }} />
+          <YAxis label={{ value: `Velocidad (${windUnit === 'kmh' ? 'km/h' : 'm/s'})`, angle: -90, position: 'insideLeft' }} />
+          <Tooltip
+            labelFormatter={(l) => {
+              const d = new Date(l);
+              return isNaN(d) ? "Inválido" : d.toLocaleString('es-CO');
+            }}
+            formatter={(v) => `${v.toFixed(2)} ${windUnit === 'kmh' ? 'km/h' : 'm/s'}`}
+          />
+          <Line type="monotone" dataKey="speed" stroke="#8884d8" dot={false} name="Velocidad (10m)" />
+        </LineChart>
+      </ResponsiveContainer>
+    ) : (
+      <p>No hay datos de evolución temporal disponibles.</p>
+    )}
+  </CardContent>
+</Card>
 
                 {/* Boxplot Horario de Velocidad del Viento (100m) */}
                 <Card>
