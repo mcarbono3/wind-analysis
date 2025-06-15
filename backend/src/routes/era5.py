@@ -73,7 +73,7 @@ class ERA5Service:
                 logger.info("📡 Descargando componente U del viento...")
                 try:
                     c.retrieve(
-                        "reanalysis-era5-single-levels-monthly-means",
+                        "reanalysis-era5-single-levels",
                         {
                             "product_type": "monthly_averaged_reanalysis",
                             "variable": "10m_u_component_of_wind",
@@ -91,7 +91,7 @@ class ERA5Service:
                 logger.info("📡 Descargando componente V del viento...")
                 try:
                     c.retrieve(
-                        "reanalysis-era5-single-levels-monthly-means",
+                        "reanalysis-era5-single-levels",
                         {
                             "product_type": "monthly_averaged_reanalysis",
                             "variable": "10m_v_component_of_wind",
