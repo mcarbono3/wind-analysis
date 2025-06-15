@@ -130,21 +130,19 @@ const extractStatistics = (analysis, unit = 'kmh') => {
 
 
 // Función para extraer datos de viabilidad - PENDIENTE DE PRUEBA EN VERSION V8d
-const extractViability = (analysis) => {
-  if (!analysis) return {};
-  
-  const assessment = safeGet(analysis, 'overall_assessment', {});
-  
-  console.log('Extracting viability from:', assessment);
-  
-  return {
-    // Usar las propiedades EXACTAS que retorna el backend
-    level: assessment.viability_level || 'No disponible',
-    recommendation: assessment.viability_message || assessment.recommendation || 'Sin recomendación disponible',
-    score: safeNumber(assessment.viability_score),
-    summary: assessment.summary || 'Sin resumen disponible',
-    recommendations: safeArray(assessment.recommendations)
-  };
+  const extractViability = (analysis) => {
+  const viabilityData = safeGet(analysis, 'viability', {});
+  const level = viabilityData.viability_level || 'No disponible';
+  const message = viabilityData.viability_message || 'Sin mensaje';
+  const score = safeNumber(viabilityData.viability_score);
+  const recommendations = Array.isArray(viabilityData.recommendations)
+    ? viabilityData.recommendations
+    : String(viabilityData.recommendations || '')
+        .split(',')
+        .map(r => r.trim())
+        .filter(Boolean);
+
+  return { level, message, score, recommendations };
 };
 
 // Función para preparar datos de gráficos - PENDIENTE DE PRUEBA EN VERSION V8d
@@ -615,20 +613,6 @@ const analysisResponse = await axios.post(`${API_BASE_URL}/wind-analysis`, {
 
   // ✅ AÑADE ESTA LÍNEA AQUÍ (ANTES DEL return)
   const viability = extractViability(analysisData.analysis);
-  const extractViability = (analysis) => {
-  const viabilityData = safeGet(analysis, 'viability', {});
-  const level = viabilityData.viability_level || 'No disponible';
-  const message = viabilityData.viability_message || 'Sin mensaje';
-  const score = safeNumber(viabilityData.viability_score);
-  const recommendations = Array.isArray(viabilityData.recommendations)
-    ? viabilityData.recommendations
-    : String(viabilityData.recommendations || '')
-        .split(',')
-        .map(r => r.trim())
-        .filter(Boolean);
-
-  return { level, message, score, recommendations };
-};
 
   const chartData = analysisData.analysis && analysisData.era5Data
   ? prepareChartData(analysisData.analysis, analysisData.era5Data, windUnit)
@@ -873,7 +857,6 @@ return (
     </Button>
   </>
 )}
-
                   </div>
                   {selectedArea && (
                     <Badge variant="secondary">
