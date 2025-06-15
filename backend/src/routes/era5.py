@@ -12,17 +12,17 @@ import tempfile
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-era5_bp = Blueprint('era5', __name__)
+era5_bp = Blueprint("era5", __name__)
 
 class ERA5Service:
     """
     Servicio ERA5 compatible con frontend
-    Versión 3.1 - Incluye endpoint para datos de viento promedio para visualización inicial
+    Versión 3.2 - Incluye endpoint para datos de viento promedio para visualización inicial
     """
     
     def __init__(self):
-        self.test_mode = True
-        logger.info("ERA5Service v3.1 inicializado - Compatible con frontend + Wind Average Layer")
+        self.test_mode = False # Cambiado a False para intentar siempre datos reales
+        logger.info("ERA5Service v3.2 inicializado - Compatible con frontend + Wind Average Layer")
 
     def safe_get(self, lst, index, default=None):
         """Acceso seguro a listas para evitar IndexError"""
@@ -35,40 +35,40 @@ class ERA5Service:
 
     def validate_parameters(self, data):
         """Validar parámetros de entrada"""
-        required_params = ['lat_min', 'lat_max', 'lon_min', 'lon_max', 'start_date', 'end_date']
+        required_params = ["lat_min", "lat_max", "lon_min", "lon_max", "start_date", "end_date"]
         missing_params = [param for param in required_params if param not in data]
         
         if missing_params:
-            raise ValueError(f'Parámetros faltantes: {missing_params}')
+            raise ValueError(f"Parámetros faltantes: {missing_params}")
         
         try:
-            lat_min = float(data['lat_min'])
-            lat_max = float(data['lat_max'])
-            lon_min = float(data['lon_min'])
-            lon_max = float(data['lon_max'])
-            start_date = data['start_date']
-            end_date = data['end_date']
+            lat_min = float(data["lat_min"])
+            lat_max = float(data["lat_max"])
+            lon_min = float(data["lon_min"])
+            lon_max = float(data["lon_max"])
+            start_date = data["start_date"]
+            end_date = data["end_date"]
             
             # Validaciones de rango
             if lat_min >= lat_max or lon_min >= lon_max:
-                raise ValueError('Rangos geográficos inválidos')
+                raise ValueError("Rangos geográficos inválidos")
             
             # Validar fechas
-            start_dt = datetime.strptime(start_date, '%Y-%m-%d')
-            end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+            start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+            end_dt = datetime.strptime(end_date, "%Y-%m-%d")
             
             if start_dt > end_dt:
-                raise ValueError('Fecha de inicio debe ser anterior a fecha final')
+                raise ValueError("Fecha de inicio debe ser anterior a fecha final")
             
             # Límite de seguridad
             if (end_dt - start_dt).days > 31:
-                raise ValueError('Rango de fechas muy amplio (máximo 31 días)')
+                raise ValueError("Rango de fechas muy amplio (máximo 31 días)")
             
             return lat_min, lat_max, lon_min, lon_max, start_date, end_date
             
         except ValueError as e:
-            if 'does not match format' in str(e):
-                raise ValueError('Formato de fecha inválido. Use YYYY-MM-DD')
+            if "does not match format" in str(e):
+                raise ValueError("Formato de fecha inválido. Use YYYY-MM-DD")
             raise
 
     def get_wind_average_data_real(self):
@@ -77,8 +77,15 @@ class ERA5Service:
         para la región del Norte de Colombia usando la API de Copernicus CDS
         """
         try:
-            # Inicializar cliente CDS
-            c = cdsapi.Client()
+            # Configurar credenciales de CDS desde variables de entorno
+            cds_url = os.environ.get("CDSAPI_URL")
+            cds_key = os.environ.get("CDSAPI_KEY")
+            
+            if not cds_url or not cds_key:
+                raise ValueError("Las variables de entorno CDSAPI_URL o CDSAPI_KEY no están configuradas.")
+            
+            # Inicializar cliente CDS con credenciales
+            c = cdsapi.Client(url=cds_url, key=cds_key)
             
             # Definir región del Norte de Colombia
             # [Norte, Oeste, Sur, Este]
@@ -88,30 +95,30 @@ class ERA5Service:
             east = -71.0
             
             # Usar año 2023 para datos recientes
-            year = '2023'
-            months = [f'{i:02d}' for i in range(1, 13)]  # Todos los meses
+            year = "2023"
+            months = [f"{i:02d}" for i in range(1, 13)]  # Todos los meses
             
             logger.info(f"🌍 Solicitando datos de ERA5 para región: [{north}, {west}, {south}, {east}]")
             
             # Crear archivos temporales
-            with tempfile.NamedTemporaryFile(suffix='.nc', delete=False) as u_temp:
+            with tempfile.NamedTemporaryFile(suffix=".nc", delete=False) as u_temp:
                 u_file = u_temp.name
-            with tempfile.NamedTemporaryFile(suffix='.nc', delete=False) as v_temp:
+            with tempfile.NamedTemporaryFile(suffix=".nc", delete=False) as v_temp:
                 v_file = v_temp.name
             
             try:
                 # Solicitar componente U del viento
                 logger.info("📡 Descargando componente U del viento...")
                 c.retrieve(
-                    'reanalysis-era5-single-levels-monthly-means',
+                    "reanalysis-era5-single-levels-monthly-means",
                     {
-                        'product_type': 'monthly_averaged_reanalysis',
-                        'variable': '10m_u_component_of_wind',
-                        'year': year,
-                        'month': months,
-                        'time': '00:00',
-                        'area': [north, west, south, east],
-                        'format': 'netcdf',
+                        "product_type": "monthly_averaged_reanalysis",
+                        "variable": "10m_u_component_of_wind",
+                        "year": year,
+                        "month": months,
+                        "time": "00:00",
+                        "area": [north, west, south, east],
+                        "format": "netcdf",
                     },
                     u_file
                 )
@@ -119,15 +126,15 @@ class ERA5Service:
                 # Solicitar componente V del viento
                 logger.info("📡 Descargando componente V del viento...")
                 c.retrieve(
-                    'reanalysis-era5-single-levels-monthly-means',
+                    "reanalysis-era5-single-levels-monthly-means",
                     {
-                        'product_type': 'monthly_averaged_reanalysis',
-                        'variable': '10m_v_component_of_wind',
-                        'year': year,
-                        'month': months,
-                        'time': '00:00',
-                        'area': [north, west, south, east],
-                        'format': 'netcdf',
+                        "product_type": "monthly_averaged_reanalysis",
+                        "variable": "10m_v_component_of_wind",
+                        "year": year,
+                        "month": months,
+                        "time": "00:00",
+                        "area": [north, west, south, east],
+                        "format": "netcdf",
                     },
                     v_file
                 )
@@ -139,13 +146,13 @@ class ERA5Service:
                 
                 # Calcular velocidad del viento: sqrt(u^2 + v^2)
                 # Promediar sobre la dimensión de tiempo para obtener promedio anual
-                wind_speed = np.sqrt(ds_u['u10'].mean(dim='time')**2 + ds_v['v10'].mean(dim='time')**2)
+                wind_speed = np.sqrt(ds_u["u10"].mean(dim="time")**2 + ds_v["v10"].mean(dim="time")**2)
                 
                 # Convertir a lista de [latitud, longitud, valor] para Leaflet.heat
                 data_points = []
                 for lat in wind_speed.latitude.values:
                     for lon in wind_speed.longitude.values:
-                        val = wind_speed.sel(latitude=lat, longitude=lon, method='nearest').item()
+                        val = wind_speed.sel(latitude=lat, longitude=lon, method="nearest").item()
                         if not np.isnan(val):
                             data_points.append([float(lat), float(lon), float(val)])
                 
@@ -216,11 +223,11 @@ class ERA5Service:
             logger.info("🔄 Generando datos compatibles con frontend")
             
             # Calcular dimensiones
-            start = datetime.strptime(start_date, '%Y-%m-%d')
-            end = datetime.strptime(end_date, '%Y-%m-%d')
+            start = datetime.strptime(start_date, "%Y-%m-%d")
+            end = datetime.strptime(end_date, "%Y-%m-%d")
             days = (end - start).days + 1
             
-            if 'spatial_points' not in locals():
+            if "spatial_points" not in locals():
                 spatial_points = 5
             
             # Puntos temporales (cada 6 horas como ERA5)
@@ -277,33 +284,33 @@ class ERA5Service:
             
             # FORMATO EXACTO que espera el frontend
             compatible_data = {
-                'wind_speed_10m': wind_speed_10m,  # Array directo ✅
-                'wind_speed_100m': wind_speed_100m,  # Array directo ✅
-                'surface_pressure': surface_pressure,  # Array directo ✅
-                'temperature_2m': temperature_2m,  # Array directo ✅
-                'wind_direction_10m': wind_direction_10m.tolist(),
-                'wind_direction_100m': wind_direction_100m.tolist(),
-                'timestamps': timestamps,
-                'time_series': timestamps,
+                "wind_speed_10m": wind_speed_10m,  # Array directo ✅
+                "wind_speed_100m": wind_speed_100m,  # Array directo ✅
+                "surface_pressure": surface_pressure,  # Array directo ✅
+                "temperature_2m": temperature_2m,  # Array directo ✅
+                "wind_direction_10m": wind_direction_10m.tolist(),
+                "wind_direction_100m": wind_direction_100m.tolist(),
+                "timestamps": timestamps,
+                "time_series": timestamps,
                 
                 # Metadatos adicionales
-                'metadata': {
-                    'total_points': total_points,
-                    'spatial_resolution': f'{spatial_points} puntos',
-                    'temporal_resolution': f'{temporal_points} timesteps',
-                    'area': f'lat:[{lat_min},{lat_max}] lon:[{lon_min},{lon_max}]',
-                    'period': f'{start_date} to {end_date}',
-                    'test_mode': True,
-                    'region': 'Caribe Colombiano',
-                    'generated_at': datetime.now().isoformat(),
-                    'version': '3.1-compatible'
+                "metadata": {
+                    "total_points": total_points,
+                    "spatial_resolution": f"{spatial_points} puntos",
+                    "temporal_resolution": f"{temporal_points} timesteps",
+                    "area": f"lat:[{lat_min},{lat_max}] lon:[{lon_min},{lon_max}]",
+                    "period": f"{start_date} to {end_date}",
+                    "test_mode": True,
+                    "region": "Caribe Colombiano",
+                    "generated_at": datetime.now().isoformat(),
+                    "version": "3.2-compatible"
                 },
                 
                 # Datos adicionales para compatibilidad
-                'time_series': [{'time': ts, 'speed': ws} for ts, ws in zip(timestamps, wind_speed_100m)],
-                'wind_speed_distribution': [{'speed': i, 'frequency': random.random()} for i in range(10)],
-                'wind_rose_data': [{'direction': d, 'frequency': random.random()} for d in ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']],
-                'hourly_patterns': {'mean_by_hour': {str(h): random.random() * 10 for h in range(24)}}
+                "time_series": [{"time": ts, "speed": ws} for ts, ws in zip(timestamps, wind_speed_100m)],
+                "wind_speed_distribution": [{"speed": i, "frequency": random.random()} for i in range(10)],
+                "wind_rose_data": [{"direction": d, "frequency": random.random()} for d in ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]],
+                "hourly_patterns": {"mean_by_hour": {str(h): random.random() * 10 for h in range(24)}}
             }
             
             logger.info(f"✅ Datos generados exitosamente:")
@@ -319,29 +326,29 @@ class ERA5Service:
             raise
 
 
-@era5_bp.route('/wind-data', methods=['POST'])
+@era5_bp.route("/wind-data", methods=["POST"])
 def get_wind_data():
     """
     Endpoint principal para obtener datos de viento
-    Versión 3.1 - Compatible con frontend (resuelve error .flat())
+    Versión 3.2 - Compatible con frontend (resuelve error .flat())
     """
     try:
-        logger.info("🚀 === INICIO SOLICITUD WIND-DATA v3.1 ===")
+        logger.info("🚀 === INICIO SOLICITUD WIND-DATA v3.2 ===")
         
         # Obtener y validar datos JSON
         data = request.get_json()
         if not data:
             logger.warning("❌ No se recibieron datos JSON")
             return jsonify({
-                'error': 'No se recibieron datos JSON',
-                'details': 'La solicitud debe incluir parámetros en formato JSON',
-                'expected_format': {
-                    'lat_min': 'float',
-                    'lat_max': 'float', 
-                    'lon_min': 'float',
-                    'lon_max': 'float',
-                    'start_date': 'YYYY-MM-DD',
-                    'end_date': 'YYYY-MM-DD'
+                "error": "No se recibieron datos JSON",
+                "details": "La solicitud debe incluir parámetros en formato JSON",
+                "expected_format": {
+                    "lat_min": "float",
+                    "lat_max": "float", 
+                    "lon_min": "float",
+                    "lon_max": "float",
+                    "start_date": "YYYY-MM-DD",
+                    "end_date": "YYYY-MM-DD"
                 }
             }), 400
         
@@ -352,9 +359,9 @@ def get_wind_data():
         except ValueError as e:
             logger.warning(f"❌ Parámetros inválidos: {e}")
             return jsonify({
-                'error': 'Parámetros inválidos',
-                'details': str(e),
-                'received_data': data
+                "error": "Parámetros inválidos",
+                "details": str(e),
+                "received_data": data
             }), 400
         
         # Generar datos compatibles con frontend
@@ -370,21 +377,21 @@ def get_wind_data():
         except Exception as e:
             logger.error(f"❌ Error generando datos: {e}")
             return jsonify({
-                'error': 'Error interno del servidor',
-                'details': str(e),
-                'timestamp': datetime.now().isoformat()
+                "error": "Error interno del servidor",
+                "details": str(e),
+                "timestamp": datetime.now().isoformat()
             }), 500
             
     except Exception as e:
         logger.error(f"❌ Error inesperado en wind-data: {e}")
         return jsonify({
-            'error': 'Error inesperado del servidor',
-            'details': str(e),
-            'timestamp': datetime.now().isoformat()
+            "error": "Error inesperado del servidor",
+            "details": str(e),
+            "timestamp": datetime.now().isoformat()
         }), 500
 
 
-@era5_bp.route('/wind-average-10m', methods=['GET'])
+@era5_bp.route("/wind-average-10m", methods=["GET"])
 def get_wind_average_10m():
     """
     Nuevo endpoint para obtener datos de velocidad promedio del viento a 10m
@@ -409,17 +416,17 @@ def get_wind_average_10m():
         
         # Preparar respuesta
         response_data = {
-            'data': wind_data,
-            'metadata': {
-                'total_points': len(wind_data),
-                'region': 'Norte de Colombia',
-                'variable': 'Velocidad promedio del viento a 10m',
-                'units': 'm/s',
-                'data_source': data_source,
-                'generated_at': datetime.now().isoformat(),
-                'version': '1.0',
-                'format': 'leaflet_heat_compatible',
-                'description': 'Datos para visualización de capa de calor en mapa inicial'
+            "data": wind_data,
+            "metadata": {
+                "total_points": len(wind_data),
+                "region": "Norte de Colombia",
+                "variable": "Velocidad promedio del viento a 10m",
+                "units": "m/s",
+                "data_source": data_source,
+                "generated_at": datetime.now().isoformat(),
+                "version": "1.0",
+                "format": "leaflet_heat_compatible",
+                "description": "Datos para visualización de capa de calor en mapa inicial"
             }
         }
         
@@ -431,7 +438,7 @@ def get_wind_average_10m():
     except Exception as e:
         logger.error(f"❌ Error en wind-average-10m: {e}")
         return jsonify({
-            'error': 'Error obteniendo datos de viento promedio',
-            'details': str(e),
-            'timestamp': datetime.now().isoformat()
+            "error": "Error obteniendo datos de viento promedio",
+            "details": str(e),
+            "timestamp": datetime.now().isoformat()
         }), 500
