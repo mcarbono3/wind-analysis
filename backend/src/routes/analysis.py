@@ -21,7 +21,7 @@ def perform_wind_analysis():
 
         wind_speeds = np.array(data['wind_speeds'])
         timestamps = data.get('timestamps', [f"T{i:02d}:00" for i in range(len(wind_speeds))])
-        wind_directions = data.get('wind_directions', None)
+        wind_directions = data.get('wind_directions', [None] * len(wind_speeds))
         air_density = data.get('air_density', None)
 
         analyzer = WindAnalysis()
@@ -32,6 +32,15 @@ def perform_wind_analysis():
         results["time_series"] = [
             {"time": ts, "speed": float(s)} for ts, s in zip(timestamps, wind_speeds)
         ]
+
+        # Agregar wind_rose_data (si hay direcciones válidas)
+        if wind_directions and any(d is not None for d in wind_directions):
+            wind_directions = np.array(wind_directions)
+            valid_mask = (~np.isnan(wind_speeds)) & (~np.isnan(wind_directions))
+            speeds = wind_speeds[valid_mask]
+            dirs = wind_directions[valid_mask]
+            rose = analyzer.generate_wind_rose(speeds, dirs)
+            results["wind_rose_data"] = rose["wind_rose_data"]
 
         # Agregar gráfico de Weibull
         weibull_result = analyzer.fit_weibull_distribution(wind_speeds)
