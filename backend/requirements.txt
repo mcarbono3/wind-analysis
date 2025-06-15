@@ -1,3 +1,6 @@
+cdsapi>=0.6.1
+xarray>=2023.1.0
+netcdf4>=1.6.0
 attrs==25.3.0
 blinker==1.9.0
 cdsapi==0.7.6
