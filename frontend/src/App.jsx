@@ -170,21 +170,28 @@ if (timeSeriesData.length === 0 && windSpeeds100m.length > 0 && timestamps.lengt
 }
 
   // Preparar datos de histograma de Weibull con múltiples fuentes posibles - PENDIENTE DE PRUEBA EN VERSION V8d
-   const weibullData = safeArray(
-  analysis.wind_speed_distribution?.map((entry) => ({
+const weibullData = safeArray(
+  (analysis.wind_speed_distribution || []).map((entry) => ({
     speed_bin: convertWindSpeed(entry.speed, unit),
     frequency: safeNumber(entry.frequency)
   }))
 );
 
-    // Preparar datos de rosa de vientos - PENDIENTE DE PRUEBA EN VERSION V8d
-  const windRoseData = safeArray(
-  analysis.wind_rose_data?.map((entry) => ({
+
+// Preparar datos de rosa de vientos
+const windRoseData = safeArray(
+  (analysis.wind_rose_data || []).map((entry) => ({
     direction: entry.direction,
-    frequency: safeNumber(entry.frequency)
+    angle: entry.angle,
+    frequencies: entry.frequencies.map(f => safeNumber(f)),
+    total_frequency: safeNumber(entry.total_frequency)
   }))
 );
 
+const windRoseLabels = {
+  speed_labels: analysis.wind_rose_labels?.speed_labels || [],
+  direction_labels: analysis.wind_rose_labels?.direction_labels || []
+};
   
   // Preparar datos de patrones horarios
   const hourlyData = [];
@@ -201,10 +208,11 @@ if (timeSeriesData.length === 0 && windSpeeds100m.length > 0 && timestamps.lengt
   console.log('Prepared chart data:', { timeSeriesData, weibullData, windRoseData, hourlyData });
   
   return {
-    timeSeries: timeSeriesData,
-    weibullHistogram: weibullData,
-    windRose: windRoseData,
-    hourlyPatterns: hourlyData
+  timeSeries: timeSeriesData,
+  weibullHistogram: weibullData,
+  windRose: windRoseData,
+  windRoseLabels: windRoseLabels,
+  hourlyPatterns: hourlyData
   };
 };
   
@@ -624,6 +632,93 @@ const analysisResponse = await axios.post(`${API_BASE_URL}/wind-analysis`, {
    const dateValidationError = getDateValidationError();
 
   console.log('🧪 Estado del botón - loading:', loading, '| selectedArea:', selectedArea, '| dateValidationError:', dateValidationError);
+import { utils as XLSXUtils, writeFile as XLSXWriteFile } from "xlsx";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
+
+// ✅ Exportar a CSV (completo y profesional)
+const exportToCSV = () => {
+  if (!analysisData?.analysis) return;
+
+  const rows = [];
+
+  const sections = [
+    "basic_statistics",
+    "capacity_factor",
+    "power_density",
+    "turbulence_analysis",
+    "weibull_analysis",
+    "viability",
+    "wind_probabilities"
+  ];
+
+  sections.forEach(section => {
+    const data = analysisData.analysis[section];
+    if (data && typeof data === "object") {
+      rows.push({ Métrica: `--- ${section.replace(/_/g, " ").toUpperCase()} ---`, Valor: "" });
+      Object.entries(data).forEach(([key, value]) => {
+        rows.push({
+          Métrica: key,
+          Valor: typeof value === "number" ? value.toFixed(2) : String(value)
+        });
+      });
+    }
+  });
+
+  const worksheet = XLSXUtils.json_to_sheet(rows);
+  const workbook = XLSXUtils.book_new();
+  XLSXUtils.book_append_sheet(workbook, worksheet, "Resultados");
+
+  XLSXWriteFile(workbook, "analisis_eolico.csv");
+};
+
+// ✅ Exportar a PDF (con secciones múltiples)
+const exportToPDF = () => {
+  if (!analysisData?.analysis) return;
+
+  const doc = new jsPDF();
+  doc.setFontSize(16);
+  doc.text("Informe de Análisis Eólico", 14, 20);
+  doc.setFontSize(10);
+
+  let startY = 30;
+
+  const sections = [
+    "basic_statistics",
+    "capacity_factor",
+    "power_density",
+    "turbulence_analysis",
+    "weibull_analysis",
+    "viability",
+    "wind_probabilities"
+  ];
+
+  sections.forEach(section => {
+    const data = analysisData.analysis[section];
+    if (data && typeof data === "object") {
+      doc.text(section.replace(/_/g, " ").toUpperCase(), 14, startY);
+      startY += 4;
+
+      const rows = Object.entries(data).map(([key, value]) => [
+        key,
+        typeof value === "number" ? value.toFixed(2) : String(value)
+      ]);
+
+      doc.autoTable({
+        startY,
+        head: [["Métrica", "Valor"]],
+        body: rows,
+        theme: "grid",
+        styles: { fontSize: 9 },
+        margin: { left: 14, right: 14 }
+      });
+
+      startY = doc.lastAutoTable.finalY + 8;
+    }
+  });
+
+  doc.save("analisis_eolico.pdf");
+};
 
 return (
 
@@ -979,56 +1074,72 @@ return (
 
                   {/* mostrar la rosa de vientos */}
 		<Card>
-  		<CardHeader>
-    			<CardTitle>Rosa de Vientos</CardTitle>
-  			</CardHeader>
-  			<CardContent>
-    			 {chartData.windRose && chartData.windRose.length > 0 ? (
-                                  <ResponsiveContainer width="100%" height={300}>
-                                      <BarChart data={chartData.windRose}>
-                                         <CartesianGrid strokeDasharray="3 3" />
-                                     <XAxis dataKey="direction" />
-                                    <YAxis label={{ value: `Velocidad (${windUnit === 'kmh' ? 'km/h' : 'm/s'})`, angle: -90, position: 'insideLeft' }} />
-                                  <Tooltip formatter={(value) => `${value.toFixed(2)} ${windUnit === 'kmh' ? 'km/h' : 'm/s'}`} />
-                             <Bar dataKey="frequency" fill="#8884d8" name="Frecuencia (%)" />
-                          </BarChart>
-                       </ResponsiveContainer>
-                   ) : (
-                     <p>No hay datos de rosa de vientos disponibles.</p>
-                   )}
-                 </CardContent>
-              </Card>
+  <CardHeader>
+    <CardTitle>Rosa de Vientos</CardTitle>
+  </CardHeader>
+  <CardContent>
+    {chartData.windRose && chartData.windRose.length > 0 ? (
+      <ResponsiveContainer width="100%" height={300}>
+        <BarChart data={chartData.windRose}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="direction" />
+          <YAxis label={{ value: `Velocidad (${windUnit === 'kmh' ? 'km/h' : 'm/s'})`, angle: -90, position: 'insideLeft' }} />
+          <Tooltip formatter={(value) => `${value.toFixed(2)} ${windUnit === 'kmh' ? 'km/h' : 'm/s'}`} />
+          <Bar dataKey="frequency" fill="#8884d8" name="Frecuencia (%)" />
+        </BarChart>
+      </ResponsiveContainer>
+    ) : (
+      <p>No hay datos de rosa de vientos disponibles.</p>
+    )}
+  </CardContent>
+</Card>
 
                 {/* Turbulencia y Otros Gráficos (Placeholder) */}
                 <Card>
-                  <CardHeader>
-                    <CardTitle>Turbulencia y Otros Gráficos</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p>Gráficos de turbulencia, variación anual de Weibull, etc., se mostrarán aquí.</p>
-                    {analysisData.turbulence_intensity_100m && (
-                      <p><strong>Intensidad de Turbulencia (100m):</strong> {analysisData.turbulence_intensity_100m.toFixed(2)}</p>
-                    )}
-                  </CardContent>
-                </Card>
+  <CardHeader>
+    <CardTitle>Turbulencia por Rango de Velocidad</CardTitle>
+  </CardHeader>
+  <CardContent>
+    {analysisData?.turbulence_analysis ? (
+      <ResponsiveContainer width="100%" height={300}>
+        <BarChart
+          data={Object.entries(analysisData.turbulence_analysis)
+            .filter(([key]) => key !== 'overall')
+            .map(([range, value]) => ({
+              range,
+              intensity: value.turbulence_intensity || 0
+            }))}
+        >
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="range" />
+          <YAxis label={{ value: "Intensidad (%)", angle: -90, position: 'insideLeft' }} />
+          <Tooltip formatter={(v) => `${v.toFixed(1)}%`} />
+          <Bar dataKey="intensity" fill="#82ca9d" name="Turbulencia (%)" />
+        </BarChart>
+      </ResponsiveContainer>
+    ) : (
+      <p>No hay datos de turbulencia disponibles.</p>
+    )}
+  </CardContent>
+</Card>
 
                 {/* Opciones de Exportación */}
-                <Card className="lg:col-span-2">
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <Download className="h-5 w-5" />
-                      <span>Exportar Resultados</span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="flex space-x-4">
-                    <Button onClick={() => alert('Funcionalidad de exportar CSV pendiente.')}>
-                      Exportar CSV
-                    </Button>
-                    <Button onClick={() => alert('Funcionalidad de exportar PDF pendiente.')}>
-                      Exportar PDF
-                    </Button>
-                  </CardContent>
-                </Card>
+<Card className="lg:col-span-2">
+  <CardHeader>
+    <CardTitle className="flex items-center space-x-2">
+      <Download className="h-5 w-5" />
+      <span>Exportar Resultados</span>
+    </CardTitle>
+  </CardHeader>
+  <CardContent className="flex space-x-4">
+    <Button onClick={exportToCSV}>
+      Exportar CSV
+    </Button>
+    <Button onClick={exportToPDF}>
+      Exportar PDF
+    </Button>
+  </CardContent>
+</Card>
               </div>
             ) : (
               <Card>
