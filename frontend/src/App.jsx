@@ -14,7 +14,7 @@ import 'leaflet/dist/leaflet.css';
 import './App.css';
 import { utils as XLSXUtils, writeFile as XLSXWriteFile } from "xlsx";
 import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import "jspdf-autotable";
 
 // Configuración de la API
 const API_BASE_URL = 'https://wind-analysis.onrender.com/api';
@@ -182,14 +182,15 @@ const weibullData = safeArray(
 
 // Preparar datos de rosa de vientos
 const windRoseData = safeArray(
-  (analysis.wind_rose_data || []).map((entry) => ({
-    direction: entry.direction,
-    angle: entry.angle,
-    frequencies: entry.frequencies.map(f => safeNumber(f)),
-    total_frequency: safeNumber(entry.total_frequency)
-  }))
+  (analysis.wind_rose_data || []).map((entry) => {
+    const data = { direction: entry.direction };
+    entry.frequencies.forEach((f, idx) => {
+      const label = analysis.wind_rose_labels?.speed_labels?.[idx] || `Rango ${idx + 1}`;
+      data[label] = safeNumber(f);
+    });
+    return data;
+  })
 );
-
 const windRoseLabels = {
   speed_labels: analysis.wind_rose_labels?.speed_labels || [],
   direction_labels: analysis.wind_rose_labels?.direction_labels || []
@@ -672,6 +673,7 @@ const exportToCSV = () => {
 };
 
 // ✅ Exportar a PDF (con secciones múltiples)
+console.log("📝 Generando PDF...");
 const exportToPDF = () => {
   if (!analysisData?.analysis) return;
 
@@ -745,7 +747,12 @@ const exportToPDF = () => {
   // 💾 Guardar PDF
   doc.save("informe_analisis_eolico.pdf");
 };
-	
+
+const getColor = (index) => {
+  const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7f50', '#aqua', '#c71585'];
+  return colors[index % colors.length];
+};
+
 return (
 
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50">
@@ -1099,7 +1106,7 @@ return (
                 </Card>
 
                   {/* mostrar la rosa de vientos */}
-		<Card>
+<Card>
   <CardHeader>
     <CardTitle>Rosa de Vientos</CardTitle>
   </CardHeader>
@@ -1109,9 +1116,11 @@ return (
         <BarChart data={chartData.windRose}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="direction" />
-          <YAxis label={{ value: `Velocidad (${windUnit === 'kmh' ? 'km/h' : 'm/s'})`, angle: -90, position: 'insideLeft' }} />
-          <Tooltip formatter={(value) => `${value.toFixed(2)} ${windUnit === 'kmh' ? 'km/h' : 'm/s'}`} />
-          <Bar dataKey="frequency" fill="#8884d8" name="Frecuencia (%)" />
+          <YAxis label={{ value: "Frecuencia (%)", angle: -90, position: "insideLeft" }} />
+          <Tooltip />
+          {chartData.windRoseLabels?.speed_labels?.map((label, index) => (
+            <Bar key={label} dataKey={label} stackId="a" fill={getColor(index)} />
+          ))}
         </BarChart>
       </ResponsiveContainer>
     ) : (
@@ -1126,30 +1135,30 @@ return (
     <CardTitle>Turbulencia por Rango de Velocidad</CardTitle>
   </CardHeader>
   <CardContent>
-    {analysisData?.turbulence_analysis ? (
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart
-          data={Object.entries(analysisData.turbulence_analysis)
-            .filter(([key]) => key !== 'overall')
-            .map(([range, value]) => ({
-              range,
-              intensity: value.turbulence_intensity || 0
-            }))}
-        >
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="range" />
-          <YAxis label={{ value: "Intensidad (%)", angle: -90, position: 'insideLeft' }} />
-          <Tooltip formatter={(v) => `${v.toFixed(1)}%`} />
-          <Bar dataKey="intensity" fill="#82ca9d" name="Turbulencia (%)" />
-        </BarChart>
-      </ResponsiveContainer>
-    ) : (
-      <p>No hay datos de turbulencia disponibles.</p>
-    )}
+{analysisData?.analysis?.turbulence_analysis ? (
+  <ResponsiveContainer width="100%" height={300}>
+    <BarChart
+      data={Object.entries(analysisData.analysis.turbulence_analysis)
+        .filter(([key]) => key !== 'overall')
+        .map(([range, value]) => ({
+          range,
+          intensity: value.turbulence_intensity || 0
+        }))}
+    >
+      <CartesianGrid strokeDasharray="3 3" />
+      <XAxis dataKey="range" />
+      <YAxis label={{ value: "Intensidad (%)", angle: -90, position: 'insideLeft' }} />
+      <Tooltip formatter={(v) => `${v.toFixed(1)}%`} />
+      <Bar dataKey="intensity" fill="#82ca9d" name="Turbulencia (%)" />
+    </BarChart>
+  </ResponsiveContainer>
+) : (
+  <p>No hay datos de turbulencia disponibles.</p>
+)}
   </CardContent>
 </Card>
 
-                {/* Opciones de Exportación */}
+      {/* Opciones de Exportación */}
 <Card className="lg:col-span-2">
   <CardHeader>
     <CardTitle className="flex items-center space-x-2">
