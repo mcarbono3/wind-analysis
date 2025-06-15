@@ -9,12 +9,12 @@ import random
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-era5_bp = Blueprint('era5', __name__)
+era5_bp = Blueprint(\'era5\', __name__)
 
 class ERA5Service:
     """
     Servicio ERA5 compatible con frontend
-    Versión 3.0 - Resuelve error 'Cannot read properties of undefined (reading flat)'
+    Versión 3.0 - Resuelve error \'Cannot read properties of undefined (reading flat)\'
     """
     
     def __init__(self):
@@ -32,40 +32,40 @@ class ERA5Service:
     
     def validate_parameters(self, data):
         """Validar parámetros de entrada"""
-        required_params = ['lat_min', 'lat_max', 'lon_min', 'lon_max', 'start_date', 'end_date']
+        required_params = [\'lat_min\', \'lat_max\', \'lon_min\', \'lon_max\', \'start_date\', \'end_date\']
         missing_params = [param for param in required_params if param not in data]
         
         if missing_params:
-            raise ValueError(f'Parámetros faltantes: {missing_params}')
+            raise ValueError(f\'Parámetros faltantes: {missing_params}\')
         
         try:
-            lat_min = float(data['lat_min'])
-            lat_max = float(data['lat_max'])
-            lon_min = float(data['lon_min'])
-            lon_max = float(data['lon_max'])
-            start_date = data['start_date']
-            end_date = data['end_date']
+            lat_min = float(data[\'lat_min\'])
+            lat_max = float(data[\'lat_max\'])
+            lon_min = float(data[\'lon_min\'])
+            lon_max = float(data[\'lon_max\'])
+            start_date = data[\'start_date\']
+            end_date = data[\'end_date\']
             
             # Validaciones de rango
             if lat_min >= lat_max or lon_min >= lon_max:
-                raise ValueError('Rangos geográficos inválidos')
+                raise ValueError(\'Rangos geográficos inválidos\')
             
             # Validar fechas
-            start_dt = datetime.strptime(start_date, '%Y-%m-%d')
-            end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+            start_dt = datetime.strptime(start_date, \'%Y-%m-%d\')
+            end_dt = datetime.strptime(end_date, \'%Y-%m-%d\')
             
             if start_dt > end_dt:
-                raise ValueError('Fecha de inicio debe ser anterior a fecha final')
+                raise ValueError(\'Fecha de inicio debe ser anterior a fecha final\')
             
             # Límite de seguridad
             if (end_dt - start_dt).days > 31:
-                raise ValueError('Rango de fechas muy amplio (máximo 31 días)')
+                raise ValueError(\'Rango de fechas muy amplio (máximo 31 días)\')
             
             return lat_min, lat_max, lon_min, lon_max, start_date, end_date
             
         except ValueError as e:
-            if 'does not match format' in str(e):
-                raise ValueError('Formato de fecha inválido. Use YYYY-MM-DD')
+            if \'does not match format\' in str(e):
+                raise ValueError(\'Formato de fecha inválido. Use YYYY-MM-DD\')
             raise
     
     def generate_frontend_compatible_data(self, lat_min, lat_max, lon_min, lon_max, start_date, end_date):
@@ -79,19 +79,21 @@ class ERA5Service:
             logger.info("🔄 Generando datos compatibles con frontend")
             
             # Calcular dimensiones
-            start = datetime.strptime(start_date, '%Y-%m-%d')
-            end = datetime.strptime(end_date, '%Y-%m-%d')
+            start = datetime.strptime(start_date, \'%Y-%m-%d\')
+            end = datetime.strptime(end_date, \'%Y-%m-%d\')
             days = (end - start).days + 1
-            
-            # Resolución espacial típica de ERA5 (0.25°)
-            lat_points = max(1, int((lat_max - lat_min) / 0.25))
-            lon_points = max(1, int((lon_max - lon_min) / 0.25))
-            spatial_points = lat_points * lon_points
             
             # Puntos temporales (cada 6 horas como ERA5)
             temporal_points = days * 4  # 4 mediciones por día
             total_points = spatial_points * temporal_points
-            
+
+            # Generar timestamps
+            timestamps = []
+            current_dt = start
+            for _ in range(temporal_points):
+                timestamps.append(current_dt.isoformat())
+                current_dt += timedelta(hours=6)
+
             logger.info(f"📊 Generando {total_points} puntos ({spatial_points} espaciales × {temporal_points} temporales)")
             
             # Generar datos realistas del Caribe
@@ -134,23 +136,28 @@ class ERA5Service:
             # El frontend hace: era5Data.wind_speed_10m.flat()
             # Por lo tanto, wind_speed_10m debe ser un array directo
             compatible_data = {
-                'wind_speed_10m': wind_speed_10m,        # Array directo ✅
-                'wind_speed_100m': wind_speed_100m,      # Array directo ✅
-                'surface_pressure': surface_pressure,    # Array directo ✅
-                'temperature_2m': temperature_2m,        # Array directo ✅
+                \'wind_speed_10m\': wind_speed_10m,        # Array directo ✅
+                \'wind_speed_100m\': wind_speed_100m,      # Array directo ✅
+                \'surface_pressure\': surface_pressure,    # Array directo ✅
+                \'temperature_2m\': temperature_2m,        # Array directo ✅
                 
                 # Metadatos adicionales (no usados por frontend pero útiles)
-                'metadata': {
-                    'total_points': total_points,
-                    'spatial_resolution': f'{lat_points}×{lon_points}',
-                    'temporal_resolution': f'{temporal_points} timesteps',
-                    'area': f'lat:[{lat_min},{lat_max}] lon:[{lon_min},{lon_max}]',
-                    'period': f'{start_date} to {end_date}',
-                    'test_mode': True,
-                    'region': 'Caribe Colombiano',
-                    'generated_at': datetime.now().isoformat(),
-                    'version': '3.0-compatible'
-                }
+                \'metadata\': {
+                    \'total_points\': total_points,
+                    \'spatial_resolution\': f\'{lat_points}×{lon_points}\\',
+                    \'temporal_resolution\': f\'{temporal_points} timesteps\\',
+                    \'area\': f\'lat:[{lat_min},{lat_max}] lon:[{lon_min},{lon_max}]\\',
+                    \'period\': f\'{start_date} to {end_date}\\',
+                    \'test_mode\': True,
+                    \'region\': \'Caribe Colombiano\',
+                    \'generated_at\': datetime.now().isoformat(),
+                    \'version\': \'3.0-compatible\'
+                },
+                \'timestamps\': timestamps, # Añadido para el frontend
+                \'time_series\': [{\'time\': ts, \'speed\': ws} for ts, ws in zip(timestamps, wind_speed_100m)], # Simulación
+                \'wind_speed_distribution\': [{\'speed\': i, \'frequency\': random.random()} for i in range(10)], # Simulación
+                \'wind_rose_data\': [{\'direction\': d, \'frequency\': random.random()} for d in [\'N\', \'NE\', \'E\', \'SE\', \'S\', \'SW\', \'W\', \'NW\']], # Simulación
+                \'hourly_patterns\': {\'mean_by_hour\': {str(h): random.random() * 10 for h in range(24)}} # Simulación
             }
             
             logger.info(f"✅ Datos generados exitosamente:")
@@ -165,7 +172,7 @@ class ERA5Service:
             logger.error(f"❌ Error generando datos compatibles: {e}")
             raise
 
-@era5_bp.route('/wind-data', methods=['POST'])
+@era5_bp.route(\'/wind-data\', methods=[\'POST\'])
 def get_wind_data():
     """
     Endpoint principal para obtener datos de viento
@@ -179,15 +186,15 @@ def get_wind_data():
         if not data:
             logger.warning("❌ No se recibieron datos JSON")
             return jsonify({
-                'error': 'No se recibieron datos JSON',
-                'details': 'La solicitud debe incluir parámetros en formato JSON',
-                'expected_format': {
-                    'lat_min': 'float',
-                    'lat_max': 'float', 
-                    'lon_min': 'float',
-                    'lon_max': 'float',
-                    'start_date': 'YYYY-MM-DD',
-                    'end_date': 'YYYY-MM-DD'
+                \'error\': \'No se recibieron datos JSON\',
+                \'details\': \'La solicitud debe incluir parámetros en formato JSON\',
+                \'expected_format\': {
+                    \'lat_min\': \'float\',
+                    \'lat_max\': \'float\', 
+                    \'lon_min\': \'float\',
+                    \'lon_max\': \'float\',
+                    \'start_date\': \'YYYY-MM-DD\',
+                    \'end_date\': \'YYYY-MM-DD\'
                 }
             }), 400
         
@@ -198,9 +205,9 @@ def get_wind_data():
         except ValueError as e:
             logger.warning(f"❌ Parámetros inválidos: {e}")
             return jsonify({
-                'error': 'Parámetros inválidos',
-                'details': str(e),
-                'received_data': data
+                \'error\': \'Parámetros inválidos\',
+                \'details\': str(e),
+                \'received_data\': data
             }), 400
         
         # Generar datos compatibles con frontend
@@ -213,24 +220,24 @@ def get_wind_data():
         except Exception as e:
             logger.error(f"❌ Error generando datos: {e}")
             return jsonify({
-                'error': 'Error generando datos de prueba',
-                'details': str(e),
-                'suggestion': 'Intente con un área o rango de fechas más pequeño'
+                \'error\': \'Error generando datos de prueba\',
+                \'details\': str(e),
+                \'suggestion\': \'Intente con un área o rango de fechas más pequeño\'
             }), 500
         
         # Respuesta en formato EXACTO que espera el frontend
         response = {
-            'status': 'success',
-            'data': era5_data,  # Datos directos como arrays
-            'message': 'Datos de prueba generados exitosamente (modo compatible)'
+            \'status\': \'success\',
+            \'data\': era5_data,  # Datos directos como arrays
+            \'message\': \'Datos de prueba generados exitosamente (modo compatible)\'
         }
         
         logger.info("🎉 === RESPUESTA EXITOSA ===")
         logger.info(f"✅ Enviando arrays directos:")
-        logger.info(f"   - wind_speed_10m: {len(era5_data['wind_speed_10m'])} elementos")
-        logger.info(f"   - wind_speed_100m: {len(era5_data['wind_speed_100m'])} elementos")
-        logger.info(f"   - surface_pressure: {len(era5_data['surface_pressure'])} elementos")
-        logger.info(f"   - temperature_2m: {len(era5_data['temperature_2m'])} elementos")
+        logger.info(f"   - wind_speed_10m: {len(era5_data[\'wind_speed_10m\'])} elementos")
+        logger.info(f"   - wind_speed_100m: {len(era5_data[\'wind_speed_100m\'])} elementos")
+        logger.info(f"   - surface_pressure: {len(era5_data[\'surface_pressure\'])} elementos")
+        logger.info(f"   - temperature_2m: {len(era5_data[\'temperature_2m\'])} elementos")
         logger.info("🔧 Frontend podrá usar .flat() sin errores")
         
         return jsonify(response)
@@ -238,85 +245,89 @@ def get_wind_data():
     except Exception as e:
         logger.error(f"💥 Error inesperado en wind-data: {e}")
         return jsonify({
-            'error': 'Error interno del servidor',
-            'details': f'Error procesando solicitud: {str(e)}',
-            'technical_error': type(e).__name__,
-            'timestamp': datetime.now().isoformat()
+            \'error\': \'Error interno del servidor\',
+            \'details\': f\'Error procesando solicitud: {str(e)}\',
+            \'technical_error\': type(e).__name__,
+            \'timestamp\': datetime.now().isoformat()
         }), 500
 
-@era5_bp.route('/health', methods=['GET'])
+@era5_bp.route(\'/health\', methods=[\'GET\'])
 def health_check():
-    """Endpoint de verificación de salud del servicio"""
+    """
+    Endpoint de verificación de salud del servicio
+    """
     return jsonify({
-        'status': 'healthy',
-        'service': 'ERA5 Wind Analysis',
-        'version': '3.0-compatible',
-        'mode': 'test_mode_compatible',
-        'frontend_compatibility': 'FIXED',
-        'flat_error_resolved': True,
-        'timestamp': datetime.now().isoformat(),
-        'endpoints': {
-            'wind-data': 'POST /api/wind-data',
-            'health': 'GET /api/health',
-            'debug': 'POST /api/debug'
+        \'status\': \'healthy\',
+        \'service\': \'ERA5 Wind Analysis\',
+        \'version\': \'3.0-compatible\',
+        \'mode\': \'test_mode_compatible\',
+        \'frontend_compatibility\': \'FIXED\',
+        \'flat_error_resolved\': True,
+        \'timestamp\': datetime.now().isoformat(),
+        \'endpoints\': {
+            \'wind-data\': \'POST /api/wind-data\',
+            \'health\': \'GET /api/health\',
+            \'debug\': \'POST /api/debug\'
         }
     })
 
-@era5_bp.route('/debug', methods=['POST'])
+@era5_bp.route(\'/debug\', methods=[\'POST\'])
 def debug_info():
-    """Endpoint de debugging para diagnosticar problemas"""
+    """
+    Endpoint de debugging para diagnosticar problemas
+    """
     try:
         data = request.get_json() or {}
         
         debug_info = {
-            'service_info': {
-                'version': '3.0-compatible',
-                'status': 'operational',
-                'frontend_compatibility': 'FIXED',
-                'flat_error_resolved': True
+            \'service_info\': {
+                \'version\': \'3.0-compatible\',
+                \'status\': \'operational\',
+                \'frontend_compatibility\': \'FIXED\',
+                \'flat_error_resolved\': True
             },
-            'received_data': data,
-            'environment': {
-                'CDSAPI_URL': os.getenv('CDSAPI_URL', 'Not set'),
-                'CDSAPI_KEY': 'Set' if os.getenv('CDSAPI_KEY') else 'Not set',
-                'test_mode': True
+            \'received_data\': data,
+            \'environment\': {
+                \'CDSAPI_URL\': os.getenv(\'CDSAPI_URL\', \'Not set\'),
+                \'CDSAPI_KEY\': \'Set\' if os.getenv(\'CDSAPI_KEY\') else \'Not set\',
+                \'test_mode\': True
             },
-            'timestamp': datetime.now().isoformat()
+            \'timestamp\': datetime.now().isoformat()
         }
         
         # Si se proporcionan fechas, simular generación
-        if 'start_date' in data and 'end_date' in data:
+        if \'start_date\' in data and \'end_date\' in data:
             try:
                 era5_service = ERA5Service()
-                lat_min = data.get('lat_min', 10.0)
-                lat_max = data.get('lat_max', 11.0) 
-                lon_min = data.get('lon_min', -75.0)
-                lon_max = data.get('lon_max', -74.0)
+                lat_min = data.get(\'lat_min\', 10.0)
+                lat_max = data.get(\'lat_max\', 11.0) 
+                lon_min = data.get(\'lon_min\', -75.0)
+                lon_max = data.get(\'lon_max\', -74.0)
                 
                 test_data = era5_service.generate_frontend_compatible_data(
                     lat_min, lat_max, lon_min, lon_max,
-                    data['start_date'], data['end_date']
+                    data[\'start_date\'], data[\'end_date\']
                 )
                 
-                debug_info['test_generation'] = {
-                    'success': True,
-                    'data_structure': {
-                        'wind_speed_10m': f"Array with {len(test_data['wind_speed_10m'])} elements",
-                        'wind_speed_100m': f"Array with {len(test_data['wind_speed_100m'])} elements",
-                        'surface_pressure': f"Array with {len(test_data['surface_pressure'])} elements",
-                        'temperature_2m': f"Array with {len(test_data['temperature_2m'])} elements"
+                debug_info[\'test_generation\'] = {
+                    \'success\': True,
+                    \'data_structure\': {
+                        \'wind_speed_10m\': f"Array with {len(test_data[\'wind_speed_10m\'])} elements",
+                        \'wind_speed_100m\': f"Array with {len(test_data[\'wind_speed_100m\'])} elements",
+                        \'surface_pressure\': f"Array with {len(test_data[\'surface_pressure\'])} elements",
+                        \'temperature_2m\': f"Array with {len(test_data[\'temperature_2m\'])} elements"
                     },
-                    'frontend_compatibility': 'CONFIRMED',
-                    'sample_values': {
-                        'wind_speed_10m_first': test_data['wind_speed_10m'][0],
-                        'wind_speed_10m_last': test_data['wind_speed_10m'][-1]
+                    \'frontend_compatibility\': \'CONFIRMED\',
+                    \'sample_values\': {
+                        \'wind_speed_10m_first\': test_data[\'wind_speed_10m\'][0],
+                        \'wind_speed_10m_last\': test_data[\'wind_speed_10m\'][-1]
                     }
                 }
                 
             except Exception as e:
-                debug_info['test_generation'] = {
-                    'success': False,
-                    'error': str(e)
+                debug_info[\'test_generation\'] = {
+                    \'success\': False,
+                    \'error\': str(e)
                 }
         
         return jsonify(debug_info)
@@ -324,43 +335,43 @@ def debug_info():
     except Exception as e:
         logger.error(f"Error en debug: {e}")
         return jsonify({
-            'error': 'Error en endpoint de debug',
-            'details': str(e),
-            'timestamp': datetime.now().isoformat()
+            \'error\': \'Error en endpoint de debug\',
+            \'details\': str(e),
+            \'timestamp\': datetime.now().isoformat()
         }), 500
 
 # Endpoint adicional para verificar formato específico
-@era5_bp.route('/test-format', methods=['GET'])
+@era5_bp.route(\'/test-format\', methods=[\'GET\'])
 def test_format():
-    """Endpoint para verificar que el formato es compatible con frontend"""
+    """
+    Endpoint para verificar que el formato es compatible con frontend
+    """
     try:
         # Generar datos de prueba pequeños
         era5_service = ERA5Service()
         test_data = era5_service.generate_frontend_compatible_data(
-            10.0, 10.5, -75.0, -74.5, '2024-01-01', '2024-01-01'
+            10.0, 10.5, -75.0, -74.5, \'2024-01-01\', \'2024-01-01\'
         )
         
         # Verificar que el formato es correcto
         format_check = {
-            'wind_speed_10m_is_array': isinstance(test_data['wind_speed_10m'], list),
-            'wind_speed_10m_length': len(test_data['wind_speed_10m']),
-            'wind_speed_10m_sample': test_data['wind_speed_10m'][:3],
-            'flat_would_work': True,  # Porque ya es un array plano
-            'frontend_compatible': True,
-            'error_resolved': 'Cannot read properties of undefined (reading flat) - FIXED'
+            \'wind_speed_10m_is_array\': isinstance(test_data[\'wind_speed_10m\'], list),
+            \'wind_speed_10m_length\': len(test_data[\'wind_speed_10m\']),
+            \'wind_speed_10m_sample\': test_data[\'wind_speed_10m\'][:3],
+            \'flat_would_work\': True,  # Porque ya es un array plano
+            \'frontend_compatible\': True,
+            \'error_resolved\': \'Cannot read properties of undefined (reading flat) - FIXED\'
         }
         
         return jsonify({
-            'status': 'success',
-            'format_verification': format_check,
-            'message': 'Formato compatible con frontend confirmado'
+            \'status\': \'success\',
+            \'format_verification\': format_check,
+            \'message\': \'Formato compatible con frontend confirmado\'
         })
         
     except Exception as e:
         return jsonify({
-            'status': 'error',
-            'error': str(e)
+            \'status\': \'error\',
+            \'error\': str(e)
         }), 500
-
-
 
