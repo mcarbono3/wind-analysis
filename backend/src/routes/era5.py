@@ -105,6 +105,8 @@ def generate_analysis_data(self, lat_min, lat_max, lon_min, lon_max, start, end)
 
     hours = int(total_seconds // 3600)
     timestamps = [(start + timedelta(hours=h)).isoformat() for h in range(0, hours + 1, 6)]
+    if not timestamps:
+        raise ValueError("No se pudieron generar puntos de tiempo para el análisis.")
 
     n = len(timestamps)
     wind_10m = [round(6 + np.sin(i/10) + random.random(), 2) for i in range(n)]
@@ -129,7 +131,6 @@ def generate_analysis_data(self, lat_min, lat_max, lon_min, lon_max, start, end)
             "data_source": "simulated" if self.test_mode else "era5_real"
         }
     }
-
 
 @era5_bp.route("/wind-data", methods=["POST"])
 def get_wind_data():
