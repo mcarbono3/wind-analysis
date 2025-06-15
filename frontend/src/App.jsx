@@ -16,9 +16,6 @@ import { utils as XLSXUtils, writeFile as XLSXWriteFile } from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-// ✅ Esto registra el plugin correctamente:
-autoTable(jsPDF);
-
 // Configuración de la API
 const API_BASE_URL = 'https://wind-analysis.onrender.com/api';
 
