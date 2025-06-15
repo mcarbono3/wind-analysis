@@ -65,6 +65,10 @@ def perform_wind_analysis():
             dirs = wind_directions[valid_mask]
             rose = generate_wind_rose(speeds, dirs)  # ✅ CORREGIDO
             results["wind_rose_data"] = rose["wind_rose_data"]
+results["wind_rose_labels"] = {
+    "speed_labels": rose["speed_labels"],
+    "direction_labels": rose["direction_labels"]
+}
 
         # Media horaria
         results["hourly_patterns"] = {
