@@ -131,7 +131,9 @@ class ERA5Service:
                 temp_var = 4 * np.sin(2 * np.pi * (i % 4) / 4 - np.pi/4) + 2 * (random.random() - 0.5)
                 temp = base_temp + temp_var * seasonal_factor
                 temperature_2m.append(round(max(20, min(35, temp)), 1))
-            
+
+            wind_direction_10m = np.random.uniform(0, 360, total_points)
+            wind_direction_100m = np.random.uniform(0, 360, total_points)
             # FORMATO EXACTO que espera el frontend
             # El frontend hace: era5Data.wind_speed_10m.flat()
             # Por lo tanto, wind_speed_10m debe ser un array directo
@@ -140,7 +142,10 @@ class ERA5Service:
                 'wind_speed_100m': wind_speed_100m,      # Array directo ✅
                 'surface_pressure': surface_pressure,    # Array directo ✅
                 'temperature_2m': temperature_2m,        # Array directo ✅
-                
+                'wind_direction_10m': wind_direction_10m.tolist(),
+                'wind_direction_100m': wind_direction_100m.tolist(),
+                timestamps': timestamps,
+                'time_series': timestamps,  # puede eliminarse si no lo usas
                 # Metadatos adicionales (no usados por frontend pero útiles)
                 'metadata': {
                     'total_points': total_points,
