@@ -85,7 +85,7 @@ class ERA5Service:
                 raise ValueError("Las variables de entorno CDSAPI_URL o CDSAPI_KEY no están configuradas.")
             
             # Inicializar cliente CDS con credenciales
-            c = cdsapi.Client(url=cds_url, key=cds_key)
+            c = cdsapi.Client(url=cds_url, key=cds_key.strip())
             
             # Definir región del Norte de Colombia
             # [Norte, Oeste, Sur, Este]
@@ -105,40 +105,44 @@ class ERA5Service:
                 u_file = u_temp.name
             with tempfile.NamedTemporaryFile(suffix=".nc", delete=False) as v_temp:
                 v_file = v_temp.name
-            
-            try:
-                # Solicitar componente U del viento
-                logger.info("📡 Descargando componente U del viento...")
-                c.retrieve(
-                    "reanalysis-era5-single-levels-monthly-means",
-                    {
-                        "product_type": "monthly_averaged_reanalysis",
-                        "variable": "10m_u_component_of_wind",
-                        "year": year,
-                        "month": months,
-                        "time": "00:00",
-                        "area": [north, west, south, east],
-                        "format": "netcdf",
-                    },
-                    u_file
-                )
+try:
+    c.retrieve(
+        "reanalysis-era5-single-levels-monthly-means",
+        {
+            "product_type": "monthly_averaged_reanalysis",
+            "variable": "10m_v_component_of_wind",
+            "year": year,
+            "month": months,
+            "time": "00:00",
+            "area": [north, west, south, east],
+            "format": "netcdf",
+        },
+        v_file
+    )
+except Exception as e:
+    logger.error(f"❌ Error al descargar componente V del viento: {e}")
+    raise     
                 
                 # Solicitar componente V del viento
                 logger.info("📡 Descargando componente V del viento...")
-                c.retrieve(
-                    "reanalysis-era5-single-levels-monthly-means",
-                    {
-                        "product_type": "monthly_averaged_reanalysis",
-                        "variable": "10m_v_component_of_wind",
-                        "year": year,
-                        "month": months,
-                        "time": "00:00",
-                        "area": [north, west, south, east],
-                        "format": "netcdf",
-                    },
-                    v_file
-                )
-                
+try:
+    c.retrieve(
+        "reanalysis-era5-single-levels-monthly-means",
+        {
+            "product_type": "monthly_averaged_reanalysis",
+            "variable": "10m_v_component_of_wind",
+            "year": year,
+            "month": months,
+            "time": "00:00",
+            "area": [north, west, south, east],
+            "format": "netcdf",
+        },
+        v_file
+    )
+except Exception as e:
+    logger.error(f"❌ Error al descargar componente V del viento: {e}")
+    raise
+              
                 # Procesar datos con xarray
                 logger.info("🔄 Procesando datos con xarray...")
                 ds_u = xr.open_dataset(u_file)
