@@ -144,7 +144,7 @@ class ERA5Service:
                 'temperature_2m': temperature_2m,        # Array directo ✅
                 'wind_direction_10m': wind_direction_10m.tolist(),
                 'wind_direction_100m': wind_direction_100m.tolist(),
-                timestamps': timestamps,
+                'timestamps': timestamps,
                 'time_series': timestamps,  # puede eliminarse si no lo usas
                 # Metadatos adicionales (no usados por frontend pero útiles)
                 'metadata': {
