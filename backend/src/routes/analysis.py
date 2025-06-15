@@ -28,12 +28,12 @@ def perform_wind_analysis():
 
         results = analyzer.comprehensive_wind_analysis(wind_speeds, air_density)
 
-        # Agregar time_series para gráfico temporal
+        # Agregar time_series
         results["time_series"] = [
             {"time": ts, "speed": float(s)} for ts, s in zip(timestamps, wind_speeds)
         ]
 
-        # Agregar gráfico de Weibull
+        # Weibull
         weibull_result = analyzer.fit_weibull_distribution(wind_speeds)
         if "shape" in weibull_result:
             x_vals = np.linspace(0, np.max(wind_speeds), 100)
@@ -49,7 +49,7 @@ def perform_wind_analysis():
             }
         results["weibull_analysis"] = weibull_result
 
-        # Histograma simple de velocidades (frecuencia)
+        # Histograma
         bins = np.arange(0, np.ceil(np.max(wind_speeds)) + 1)
         hist, bin_edges = np.histogram(wind_speeds, bins=bins, density=True)
         results["wind_speed_distribution"] = [
@@ -57,16 +57,16 @@ def perform_wind_analysis():
             for i in range(len(hist))
         ]
 
-        # Rosa de los vientos (si se reciben direcciones)
+        # Rosa de los vientos
         if wind_directions:
             wind_directions = np.array(wind_directions)
             valid_mask = (~np.isnan(wind_speeds)) & (~np.isnan(wind_directions))
             speeds = wind_speeds[valid_mask]
             dirs = wind_directions[valid_mask]
-            rose = analyzer.generate_wind_rose(speeds, dirs)
+            rose = generate_wind_rose(speeds, dirs)  # ✅ CORREGIDO
             results["wind_rose_data"] = rose["wind_rose_data"]
 
-        # Media horaria simulada (usada para gráfico de barras por hora)
+        # Media horaria
         results["hourly_patterns"] = {
             "mean_by_hour": {
                 str(i): round(float(np.mean(wind_speeds[i::24])), 2)
@@ -74,10 +74,9 @@ def perform_wind_analysis():
             }
         }
 
-        # Indicador de viabilidad básica (simulada)
+        # Viabilidad
         avg = np.mean(wind_speeds)
         std = np.std(wind_speeds)
-
         results["viability"] = {
             "viability_level": "Moderado" if avg > 5 else "Bajo",
             "viability_score": int(np.clip(avg * 10, 0, 100)),
@@ -91,6 +90,7 @@ def perform_wind_analysis():
                 "Verificar accesibilidad logística"
             ]
         }
+
         results = convert_numpy_to_json(results)
 
         return jsonify({
@@ -101,6 +101,8 @@ def perform_wind_analysis():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
 def generate_wind_rose(wind_speeds, wind_directions):
     """
     Genera datos de rosa de los vientos para gráficos.
@@ -144,6 +146,7 @@ def generate_wind_rose(wind_speeds, wind_directions):
         'direction_labels': dir_labels
     }
 
+
 def convert_numpy_to_json(obj):
     """
     Convierte objetos numpy a tipos JSON serializables
@@ -162,3 +165,4 @@ def convert_numpy_to_json(obj):
         return bool(obj)
     else:
         return obj
+
