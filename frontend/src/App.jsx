@@ -614,6 +614,7 @@ const analysisResponse = await axios.post(`${API_BASE_URL}/wind-analysis`, {
   };
 
   // ✅ AÑADE ESTA LÍNEA AQUÍ (ANTES DEL return)
+  const viability = extractViability(analysisData.analysis);
   const extractViability = (analysis) => {
   const viabilityData = safeGet(analysis, 'viability', {});
   const level = viabilityData.viability_level || 'No disponible';
