@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Rectangle, useMapEvents, useMap } from 'react-leaflet';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,67 +13,127 @@ import axios from 'axios';
 import 'leaflet/dist/leaflet.css';
 import './App.css';
 import { utils as XLSXUtils, writeFile as XLSXWriteFile } from "xlsx";
-import jsPDF from "jspdf";
+import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+
+// Importar Leaflet y el plugin de heatmap
+
+import L from 'leaflet';
+import 'leaflet.heat';
+
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+// Solución para el problema del icono predeterminado de Leaflet en Webpack
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+});
 
 // Configuración de la API
 const API_BASE_URL = 'https://wind-analysis.onrender.com/api';
 
 // Funciones helper para acceso seguro a datos
 const safeGet = (obj, path, defaultValue = null) => {
-  try {
-    return path.split('.').reduce((current, key) => current?.[key], obj) ?? defaultValue;
-  } catch {
-    return defaultValue;
-  }
+    try {
+        return path.split('.').reduce((current, key) => current?.[key], obj) ?? defaultValue;
+    } catch {
+        return defaultValue;
+    }
 };
 
 const safeNumber = (value, defaultValue = 0) => {
-  const num = Number(value);
-  return isNaN(num) || !isFinite(num) ? defaultValue : num;
+    const num = Number(value);
+    return isNaN(num) || !isFinite(num) ? defaultValue : num;
 };
 
 const safeArray = (arr, defaultValue = []) => {
-  return Array.isArray(arr) && arr.length > 0 ? arr : defaultValue;
+    return Array.isArray(arr) && arr.length > 0 ? arr : defaultValue;
 };
 
 const formatNumber = (value, decimals = 2, defaultText = 'N/A') => {
-  const num = safeNumber(value);
-  return num !== 0 || value === 0 ? num.toFixed(decimals) : defaultText;
+    const num = safeNumber(value);
+    return num !== 0 || value === 0 ? num.toFixed(decimals) : defaultText;
 };
 
 const formatPercentage = (value, decimals = 2, defaultText = 'N/A') => {
-  const num = safeNumber(value);
-  if (num === 0 && value !== 0) return defaultText;
-  return `${(num * 100).toFixed(decimals)}%`;
+    const num = safeNumber(value);
+    if (num === 0 && value !== 0) return defaultText;
+    return `${(num * 100).toFixed(decimals)}%`;
 };
 
 const isValidDate = (date) => {
-  return date instanceof Date && !isNaN(date.getTime());
+    return date instanceof Date && !isNaN(date.getTime());
 };
 
 const formatDate = (dateString, defaultText = 'Fecha inválida') => {
-  try {
-    const date = new Date(dateString);
-    return isValidDate(date) ? date.toLocaleDateString() : defaultText;
-  } catch {
-    return defaultText;
-  }
+    try {
+        const date = new Date(dateString);
+        return isValidDate(date) ? date.toLocaleDateString() : defaultText;
+    } catch {
+        return defaultText;
+    }
 };
 
 const formatDateTime = (dateString, defaultText = 'Fecha inválida') => {
-  try {
-    const date = new Date(dateString);
-    return isValidDate(date) ? date.toLocaleString() : defaultText;
-  } catch {
-    return defaultText;
-  }
+    try {
+        const date = new Date(dateString);
+        return isValidDate(date) ? date.toLocaleString() : defaultText;
+    } catch {
+        return defaultText;
+    }
 };
-// ✅ Debe ir aquí:
+
 const convertWindSpeed = (value, unit) => {
-  const v = safeNumber(value);
-  return unit === 'kmh' ? v * 3.6 : v;
+    const v = safeNumber(value);
+    return unit === 'kmh' ? v * 3.6 : v;
 };
+
+// Componente para la capa de heatmap del viento promedio
+function WindHeatmapLayer({ data }) {
+  const map = useMap();
+  const heatLayerRef = useRef(null);
+
+  useEffect(() => {
+    if (!map || !data?.length) return;
+
+    // Remover capa anterior si existe
+    if (heatLayerRef.current) {
+      map.removeLayer(heatLayerRef.current);
+    }
+
+    // Crear nueva capa
+    const newLayer = L.heatLayer(data, {
+      radius: 25,
+      blur: 15,
+      maxZoom: 17,
+      max: 12,
+      minOpacity: 0.4,
+      gradient: {
+        0.0: "#0000ff",
+        0.25: "#00ffff",
+        0.5: "#00ff00",
+        0.75: "#ffff00",
+        1.0: "#ff0000"
+      }
+    }).addTo(map);
+
+    heatLayerRef.current = newLayer;
+
+    return () => {
+      if (heatLayerRef.current) {
+        map.removeLayer(heatLayerRef.current);
+        heatLayerRef.current = null;
+      }
+    };
+  }, [map, data]);
+
+  return null;
+}
+
 // Función para normalizar la estructura de datos del análisis
 const normalizeAnalysisData = (rawAnalysis) => {
   console.log('🔄 Normalizing analysis data:', rawAnalysis);
@@ -332,6 +392,7 @@ function MapSelector({ onAreaSelect, selectedArea, isSelecting, setIsSelecting }
 
 // Componente principal
 function App() {
+
   const [selectedArea, setSelectedArea] = useState(null);
 // ✅ CAMBIO: Unidad de velocidad del viento (por defecto km/h)
 const [windUnit, setWindUnit] = useState('kmh');
@@ -341,8 +402,50 @@ const convertWindSpeed = (value, unit) => {
   const v = safeNumber(value);
   return unit === 'kmh' ? v * 3.6 : v;
 };
-// ✅ CAMBIO: Unidad de velocidad del viento (por defecto km/h)
 
+    // Estados para el heatmap de viento promedio
+    const [windHeatmapData, setWindHeatmapData] = useState([]);
+    const [heatmapLoading, setHeatmapLoading] = useState(true);
+    const [heatmapError, setHeatmapError] = useState(null);
+
+    // Cargar datos del heatmap de viento promedio al inicializar
+    useEffect(() => {
+        const fetchWindHeatmapData = async () => {
+            try {
+                setHeatmapLoading(true);
+                setHeatmapError(null);
+                
+                console.log('🌬️ Cargando datos de viento promedio para heatmap...');
+                
+                const response = await axios.get(`${API_BASE_URL}/wind-average-10m`);
+                
+                if (response.data && response.data.data) {
+                    setWindHeatmapData(response.data.data);
+                    console.log(`✅ Datos de heatmap cargados: ${response.data.data.length} puntos`);
+                } else {
+                    throw new Error('Formato de respuesta inválido');
+                }
+                
+            } catch (err) {
+                console.error('❌ Error cargando datos de heatmap:', err);
+                setHeatmapError(err.message);
+                // Datos de fallback para desarrollo
+                setWindHeatmapData([
+                    [10.0, -74.0, 6.5],
+                    [11.0, -74.5, 7.2],
+                    [9.5, -75.0, 5.8],
+                    [12.0, -73.0, 8.1],
+                    [8.0, -76.0, 4.9]
+                ]);
+            } finally {
+                setHeatmapLoading(false);
+            }
+        };
+
+        fetchWindHeatmapData();
+    }, []);
+
+// ✅ CAMBIO: Unidad de velocidad del viento (por defecto km/h)
   const today = new Date();
   const defaultEndDate = new Date(today);
   defaultEndDate.setDate(today.getDate() - 3);
@@ -796,77 +899,131 @@ return (
           </TabsList>
 
           {/* Tab: Mapa */}
-          <TabsContent value="map" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <MapPin className="h-5 w-5" />
-                  <span>Seleccionar Área de Análisis</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-96 rounded-lg overflow-hidden border">
-                  <MapContainer
-                    center={[caribbeanBounds.center.lat, caribbeanBounds.center.lon]}
-                    zoom={7}
-                    style={{ height: '100%', width: '100%' }}
-                    dragging={!isMapSelecting} // Controlar el arrastre del mapa con el estado isMapSelecting
-                    className={isMapSelecting ? 'cursor-default' : 'cursor-grab'}
-                  >
-                    <TileLayer
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    />
-                    <MapSelector
-                      onAreaSelect={handleAreaSelect}
-                      selectedArea={selectedArea}
-                      isSelecting={isMapSelecting} // Sección modificada
-                      setIsSelecting={setIsMapSelecting} // Pasar la función para actualizar el estado
-                    />
-                  </MapContainer>
-                </div>
-                <div className="mt-4 flex justify-between items-center">
-                  <p className="text-sm text-gray-600">
-                    {isMapSelecting ? 'Haz clic y arrastra para seleccionar un área' : 'Haz clic en "Iniciar Selección" para dibujar un área'}
-                  </p>
-                  <div className="flex space-x-2">
-                    <Button 
-                      onClick={() => {
-                        console.log('App - Iniciar Selección button clicked. Current isMapSelecting:', isMapSelecting);
-                        setIsMapSelecting(true);
-                      }} 
-                      disabled={isMapSelecting}
-                    >
-                      {isMapSelecting ? 'Seleccionando...' : 'Iniciar Selección'}
-                    </Button>
-		  {selectedArea && (
-  <>
-    <Button 
-      onClick={handleClearSelection} 
-      variant="outline"
-      size="icon"
-    >
-      <XCircle className="h-4 w-4" />
-    </Button>
+<TabsContent value="map" className="space-y-6">
+  <Card>
+    <CardHeader>
+      <CardTitle className="flex items-center space-x-2">
+        <MapPin className="h-5 w-5" />
+        <span>Seleccionar Área de Análisis</span>
+      </CardTitle>
+    </CardHeader>
 
-    <Button
-      onClick={() => setActiveTab('analysis')}
-      className="bg-emerald-600 hover:bg-emerald-700 text-white"
-    >
-      Continuar
-    </Button>
-  </>
-)}
-                  </div>
-                  {selectedArea && (
-                    <Badge variant="secondary">
-                      Área seleccionada: {selectedArea[0][0].toFixed(2)}°, {selectedArea[0][1].toFixed(2)}° a {selectedArea[1][0].toFixed(2)}°, {selectedArea[1][1].toFixed(2)}°
-                    </Badge>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+    <CardContent>
+      {/* Mapa principal con heatmap y selección */}
+      <div className="h-96 rounded-lg overflow-hidden border">
+        <MapContainer
+          center={[caribbeanBounds.center.lat, caribbeanBounds.center.lon]}
+          zoom={7}
+          style={{ height: '100%', width: '100%' }}
+          dragging={!isMapSelecting}
+          className={isMapSelecting ? 'cursor-default' : 'cursor-grab'}
+        >
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          />
+
+          {/* 🔥 Capa de calor */}
+          {windHeatmapData.length > 0 && (
+            <WindHeatmapLayer data={windHeatmapData} />
+          )}
+
+          {/* 🟦 Selector de área */}
+          <MapSelector
+            onAreaSelect={handleAreaSelect}
+            selectedArea={selectedArea}
+            isSelecting={isMapSelecting}
+            setIsSelecting={setIsMapSelecting}
+          />
+
+          {/* 🔲 Rectángulo del área seleccionada */}
+          {selectedArea && (
+            <Rectangle
+              bounds={[
+                [selectedArea[0][0], selectedArea[0][1]],
+                [selectedArea[1][0], selectedArea[1][1]],
+              ]}
+              color="red"
+              weight={2}
+              fillOpacity={0.1}
+            />
+          )}
+        </MapContainer>
+      </div>
+
+      {/* Leyenda del heatmap */}
+      <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+        <p className="text-sm font-medium mb-2">Leyenda - Velocidad del Viento (m/s):</p>
+        <div className="flex items-center space-x-4 text-xs">
+          <div className="flex items-center space-x-1">
+            <div className="w-3 h-3 bg-blue-500 rounded"></div>
+            <span>0–3</span>
+          </div>
+          <div className="flex items-center space-x-1">
+            <div className="w-3 h-3 bg-cyan-400 rounded"></div>
+            <span>3–6</span>
+          </div>
+          <div className="flex items-center space-x-1">
+            <div className="w-3 h-3 bg-green-400 rounded"></div>
+            <span>6–9</span>
+          </div>
+          <div className="flex items-center space-x-1">
+            <div className="w-3 h-3 bg-yellow-400 rounded"></div>
+            <span>9–12</span>
+          </div>
+          <div className="flex items-center space-x-1">
+            <div className="w-3 h-3 bg-red-500 rounded"></div>
+            <span>&gt;12</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Controles */}
+      <div className="mt-4 flex flex-col lg:flex-row lg:justify-between lg:items-center space-y-3 lg:space-y-0">
+        <p className="text-sm text-gray-600">
+          {isMapSelecting
+            ? 'Haz clic y arrastra para seleccionar un área'
+            : 'Haz clic en "Iniciar Selección" para dibujar un área'}
+        </p>
+        <div className="flex space-x-2 items-center">
+          <Button
+            onClick={() => setIsMapSelecting(true)}
+            disabled={isMapSelecting}
+          >
+            {isMapSelecting ? 'Seleccionando...' : 'Iniciar Selección'}
+          </Button>
+
+          {selectedArea && (
+            <>
+              <Button
+                onClick={handleClearSelection}
+                variant="outline"
+                size="icon"
+              >
+                <XCircle className="h-4 w-4" />
+              </Button>
+              <Button
+                onClick={() => setActiveTab('analysis')}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                Continuar
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Badge de coordenadas */}
+      {selectedArea && (
+        <div className="mt-2">
+          <Badge variant="secondary">
+            Área seleccionada: {selectedArea[0][0].toFixed(2)}°, {selectedArea[0][1].toFixed(2)}° a {selectedArea[1][0].toFixed(2)}°, {selectedArea[1][1].toFixed(2)}°
+          </Badge>
+        </div>
+      )}
+    </CardContent>
+  </Card>
+</TabsContent>
 
           {/* Tab: Configuración */}
           <TabsContent value="analysis" className="space-y-6">
@@ -930,7 +1087,7 @@ return (
  	   <input type="checkbox" id="temperature" defaultChecked />
   	  <Label htmlFor="temperature">Temperatura</Label>
   	</div>
-
+	
  	 {/* 🧭 Selector de unidades con espaciado separado y orden visual claro */}
   	<div className="pt-4">
   	  <Label htmlFor="windUnit" className="block mb-1 text-sm font-medium text-gray-700">
