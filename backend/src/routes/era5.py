@@ -82,8 +82,7 @@ class ERA5Service:
             start = datetime.strptime(start_date, '%Y-%m-%d')
             end = datetime.strptime(end_date, '%Y-%m-%d')
             days = (end - start).days + 1
-            if 'spatial_points' not in locals():
-    		spatial_points = 5
+            if 'spatial_points' not in locals():spatial_points = 5
             # Puntos temporales (cada 6 horas como ERA5)
             temporal_points = days * 4  # 4 mediciones por día
             total_points = spatial_points * temporal_points
