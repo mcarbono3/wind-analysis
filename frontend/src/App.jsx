@@ -983,12 +983,12 @@ return (
 		{/* Resumen del Análisis */}
 <Card>
   <CardHeader>
-    <CardTitle className="flex items-center space-x-2">
+    <CardTitle className="flex items-center space-x-2 text-xl font-semibold">
       <TrendingUp className="h-5 w-5" />
       <span>Resumen del Análisis</span>
     </CardTitle>
   </CardHeader>
-  <CardContent className="space-y-4">
+  <CardContent className="space-y-4 text-base">
     <p>
       <strong>Área Analizada:</strong>{" "}
       {analysisData?.location?.bounds
@@ -998,14 +998,17 @@ return (
     <p><strong>Fecha de Inicio:</strong> {dateRange?.startDate || "N/A"}</p>
     <p><strong>Fecha de Fin:</strong> {dateRange?.endDate || "N/A"}</p>
 
-    <div className={`p-3 rounded-md ${getViabilityColor(viability.level)} text-white`}>
-      <div className="flex items-center space-x-2 text-lg font-semibold">
-        <span className="text-2xl">{getViabilityIcon(viability.message)}</span>
-        <span>{viability.message}</span>
+    <div className={`p-4 rounded-md ${getViabilityColor(viability.level)} text-white shadow-sm`}>
+      <div className="flex items-center space-x-3 mb-1">
+        <span className="text-3xl">{getViabilityIcon(viability.message)}</span>
+        <span className="text-xl font-bold">{viability.message}</span>
       </div>
-      <p className="text-sm">Nivel: <strong>{viability.level}</strong> | Puntuación: <strong>{viability.score}</strong></p>
+      <div className="text-base">
+        <strong>Nivel:</strong> {viability.level} &nbsp;|&nbsp;
+        <strong>Puntuación:</strong> {viability.score}
+      </div>
       {viability.recommendations.length > 0 && (
-        <ul className="list-disc pl-6 text-sm mt-1">
+        <ul className="list-disc pl-6 mt-2 text-sm leading-relaxed">
           {viability.recommendations.map((rec, i) => (
             <li key={i}>{rec}</li>
           ))}
@@ -1013,7 +1016,7 @@ return (
       )}
     </div>
 
-    <p className="text-sm text-gray-700">
+    <p className="text-base text-gray-700">
       <strong>Velocidad Promedio del Viento (100m):</strong>{" "}
       {formatNumber(extractStatistics(analysisData.analysis, windUnit).mean_wind_speed_100m)}{" "}
       {windUnit === "kmh" ? "km/h" : "m/s"}
@@ -1079,10 +1082,7 @@ return (
           }))}
         >
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="time" tickFormatter={(t) => {
-            const d = new Date(t);
-            return isNaN(d) ? "?" : d.toLocaleDateString('es-CO');
-          }} />
+	  <XAxis dataKey="time" interval="preserveStartEnd" tickFormatter={(t) => isNaN(new Date(t)) ? '' : new Date(t).toLocaleDateString('es-CO')} />
           <YAxis label={{ value: `Velocidad (${windUnit === 'kmh' ? 'km/h' : 'm/s'})`, angle: -90, position: 'insideLeft' }} />
           <Tooltip
             labelFormatter={(l) => {
