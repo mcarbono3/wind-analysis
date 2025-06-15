@@ -94,36 +94,38 @@ class ERA5Service:
         lats = np.linspace(7.0, 13.0, 20)
         lons = np.linspace(-77.0, -71.0, 25)
         return [[float(lat), float(lon), round(random.uniform(3, 11), 2)] for lat in lats for lon in lons]
-
 def generate_analysis_data(self, lat_min, lat_max, lon_min, lon_max, start, end):
     if end <= start:
         raise ValueError("La fecha final debe ser posterior a la fecha de inicio.")
-    
+
     total_seconds = (end - start).total_seconds()
     if total_seconds < 3600:
-        raise ValueError("El rango de fechas debe cubrir al menos una hora.")
+        raise ValueError("El rango de fechas debe cubrir al menos una hora para generar análisis.")
 
     hours = int(total_seconds // 3600)
-    timestamps = [(start + timedelta(hours=h)).isoformat() for h in range(0, hours + 1, 6)]
+    step = 6  # cada 6 horas como en ERA5 típico
+    timestamps = [(start + timedelta(hours=h)).isoformat() for h in range(0, hours + 1, step)]
+    
     if not timestamps:
         raise ValueError("No se pudieron generar puntos de tiempo para el análisis.")
 
     n = len(timestamps)
-    wind_10m = [round(6 + np.sin(i/10) + random.random(), 2) for i in range(n)]
+
+    wind_10m = [round(6 + np.sin(i / 10) + random.uniform(0, 1.5), 2) for i in range(n)]
     wind_100m = [round(w * 1.25, 2) for w in wind_10m]
-    temp_2m = [round(26 + np.sin(i/10)*2 + random.random(), 1) for i in range(n)]
-    pressure = [round(1013 + np.cos(i/8)*4 + random.random(), 1) for i in range(n)]
-    dir_10m = list(np.random.uniform(0, 360, n))
-    dir_100m = list(np.random.uniform(0, 360, n))
+    temperature_2m = [round(26 + np.cos(i / 12) * 3 + random.uniform(0, 1), 1) for i in range(n)]
+    surface_pressure = [round(1013 + np.cos(i / 15) * 6 + random.uniform(0, 2), 1) for i in range(n)]
+    wind_direction_10m = list(np.random.uniform(0, 360, n))
+    wind_direction_100m = list(np.random.uniform(0, 360, n))
 
     return {
         "timestamps": timestamps,
         "wind_speed_10m": wind_10m,
         "wind_speed_100m": wind_100m,
-        "temperature_2m": temp_2m,
-        "surface_pressure": pressure,
-        "wind_direction_10m": dir_10m,
-        "wind_direction_100m": dir_100m,
+        "temperature_2m": temperature_2m,
+        "surface_pressure": surface_pressure,
+        "wind_direction_10m": wind_direction_10m,
+        "wind_direction_100m": wind_direction_100m,
         "metadata": {
             "region": "Norte de Colombia",
             "generated_at": datetime.utcnow().isoformat() + "Z",
