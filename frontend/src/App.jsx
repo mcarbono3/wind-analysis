@@ -676,30 +676,54 @@ const exportToPDF = () => {
   if (!analysisData?.analysis) return;
 
   const doc = new jsPDF();
-  doc.setFontSize(16);
-  doc.text("Informe de Análisis Eólico", 14, 20);
+  const title = "Informe de Análisis Eólico - Caribe";
+  const date = new Date().toLocaleDateString();
+
+  // 🧾 Título del documento
+  doc.setFontSize(18);
+  doc.text(title, 14, 20);
   doc.setFontSize(10);
+  doc.setTextColor(100);
+  doc.text(`Fecha de generación: ${date}`, 14, 28);
 
-  let startY = 30;
+  let startY = 36;
 
+  // 🌀 Información del área analizada
+  const bounds = analysisData?.location?.bounds || [];
+  const areaText = bounds.length === 2
+    ? `Área: ${bounds[0][0].toFixed(2)}°, ${bounds[0][1].toFixed(2)}° a ${bounds[1][0].toFixed(2)}°, ${bounds[1][1].toFixed(2)}°`
+    : 'Área no disponible';
+
+  doc.text(areaText, 14, startY);
+  startY += 6;
+
+  const viability = extractViability(analysisData.analysis);
+  const viabilityText = viability?.recommendation || "No disponible";
+  doc.text(`Viabilidad: ${viabilityText}`, 14, startY);
+  startY += 10;
+
+  // 🔍 Secciones que se exportarán
   const sections = [
-    "basic_statistics",
-    "capacity_factor",
-    "power_density",
-    "turbulence_analysis",
-    "weibull_analysis",
-    "viability",
-    "wind_probabilities"
+    { key: "basic_statistics", title: "Estadísticas Básicas" },
+    { key: "capacity_factor", title: "Factor de Capacidad" },
+    { key: "power_density", title: "Densidad de Potencia" },
+    { key: "turbulence_analysis", title: "Análisis de Turbulencia" },
+    { key: "weibull_analysis", title: "Parámetros Weibull" },
+    { key: "wind_probabilities", title: "Probabilidades de Viento" },
+    { key: "viability", title: "Resumen de Viabilidad" }
   ];
 
   sections.forEach(section => {
-    const data = analysisData.analysis[section];
+    const data = analysisData.analysis[section.key];
     if (data && typeof data === "object") {
-      doc.text(section.replace(/_/g, " ").toUpperCase(), 14, startY);
+      // 🧩 Título de la sección
+      doc.setFont(undefined, 'bold');
+      doc.text(section.title, 14, startY);
+      doc.setFont(undefined, 'normal');
       startY += 4;
 
       const rows = Object.entries(data).map(([key, value]) => [
-        key,
+        key.replace(/_/g, ' '),
         typeof value === "number" ? value.toFixed(2) : String(value)
       ]);
 
@@ -709,16 +733,19 @@ const exportToPDF = () => {
         body: rows,
         theme: "grid",
         styles: { fontSize: 9 },
-        margin: { left: 14, right: 14 }
+        headStyles: { fillColor: [22, 160, 133] }, // verde azulado
+        margin: { left: 14, right: 14 },
+        didDrawPage: (data) => {
+          startY = data.cursor.y + 8;
+        }
       });
-
-      startY = doc.lastAutoTable.finalY + 8;
     }
   });
 
-  doc.save("analisis_eolico.pdf");
+  // 💾 Guardar PDF
+  doc.save("informe_analisis_eolico.pdf");
 };
-
+	
 return (
 
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-cyan-50">
