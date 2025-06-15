@@ -18,8 +18,7 @@ def perform_wind_analysis():
         # Validar datos requeridos
         if 'wind_speeds' not in data:
             return jsonify({'error': 'Se requieren datos de velocidad del viento'}), 400
-        
-	wind_speeds = np.array(data['wind_speeds'])
+wind_speeds = np.array(data['wind_speeds'])
 timestamps = data.get('timestamps', [f"T{i:02d}:00" for i in range(len(wind_speeds))])
 wind_directions = data.get('wind_directions', None)
 air_density = data.get('air_density', None)
