@@ -28,24 +28,28 @@ def perform_wind_analysis():
 
         results = analyzer.comprehensive_wind_analysis(wind_speeds, air_density)
 
-        # Agregar time_series
+        # Agregar time_series para gráfico temporal
         results["time_series"] = [
             {"time": ts, "speed": float(s)} for ts, s in zip(timestamps, wind_speeds)
         ]
 
-        # Agregar weibull_plot
+        # Agregar gráfico de Weibull
         weibull_result = analyzer.fit_weibull_distribution(wind_speeds)
         if "shape" in weibull_result:
             x_vals = np.linspace(0, np.max(wind_speeds), 100)
-            y_vals = stats.weibull_min.pdf(x_vals, weibull_result["shape"],
-                                           weibull_result["location"], weibull_result["scale"])
+            y_vals = stats.weibull_min.pdf(
+                x_vals,
+                weibull_result["shape"],
+                weibull_result["location"],
+                weibull_result["scale"]
+            )
             weibull_result["plot_data"] = {
                 "x_values": x_vals.tolist(),
                 "y_values": y_vals.tolist()
             }
         results["weibull_analysis"] = weibull_result
 
-        # Agregar distribución simple de velocidades
+        # Histograma simple de velocidades (frecuencia)
         bins = np.arange(0, np.ceil(np.max(wind_speeds)) + 1)
         hist, bin_edges = np.histogram(wind_speeds, bins=bins, density=True)
         results["wind_speed_distribution"] = [
@@ -53,7 +57,7 @@ def perform_wind_analysis():
             for i in range(len(hist))
         ]
 
-        # Agregar wind_rose_data (si hay direcciones)
+        # Rosa de los vientos (si se reciben direcciones)
         if wind_directions:
             wind_directions = np.array(wind_directions)
             valid_mask = (~np.isnan(wind_speeds)) & (~np.isnan(wind_directions))
@@ -62,7 +66,7 @@ def perform_wind_analysis():
             rose = analyzer.generate_wind_rose(speeds, dirs)
             results["wind_rose_data"] = rose["wind_rose_data"]
 
-        # Agregar patrones horarios
+        # Media horaria simulada (usada para gráfico de barras por hora)
         results["hourly_patterns"] = {
             "mean_by_hour": {
                 str(i): round(float(np.mean(wind_speeds[i::24])), 2)
@@ -70,14 +74,17 @@ def perform_wind_analysis():
             }
         }
 
-        # Agregar viabilidad simulada
+        # Indicador de viabilidad básica (simulada)
+        avg = np.mean(wind_speeds)
+        std = np.std(wind_speeds)
+
         results["viability"] = {
-            "viability_level": "Moderado" if np.mean(wind_speeds) > 5 else "Bajo",
-            "viability_score": int(np.clip(np.mean(wind_speeds) * 10, 0, 100)),
-            "viability_message": "✅ Viable" if np.mean(wind_speeds) > 5 else "❌ No viable",
+            "viability_level": "Moderado" if avg > 5 else "Bajo",
+            "viability_score": int(np.clip(avg * 10, 0, 100)),
+            "viability_message": "✅ Viable" if avg > 5 else "❌ No viable",
             "key_metrics": {
-                "mean_speed": round(float(np.mean(wind_speeds)), 2),
-                "std_dev": round(float(np.std(wind_speeds)), 2)
+                "mean_speed": round(float(avg), 2),
+                "std_dev": round(float(std), 2)
             },
             "recommendations": [
                 "Considerar ubicación en terreno abierto",
@@ -95,3 +102,23 @@ def perform_wind_analysis():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+def convert_numpy_to_json(obj):
+    """
+    Convierte objetos numpy a tipos JSON serializables
+    """
+    if isinstance(obj, dict):
+        return {key: convert_numpy_to_json(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_numpy_to_json(item) for item in obj]
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, (np.int64, np.int32)):
+        return int(obj)
+    elif isinstance(obj, (np.float64, np.float32)):
+        return float(obj)
+    elif isinstance(obj, np.bool_):
+        return bool(obj)
+    else:
+        return obj
