@@ -28,12 +28,12 @@ def perform_wind_analysis():
 
         results = analyzer.comprehensive_wind_analysis(wind_speeds, air_density)
 
-        # Agregar time_series
+        # Agregar time_series para gráfico temporal
         results["time_series"] = [
             {"time": ts, "speed": float(s)} for ts, s in zip(timestamps, wind_speeds)
         ]
 
-        # Weibull
+        # Agregar gráfico de Weibull
         weibull_result = analyzer.fit_weibull_distribution(wind_speeds)
         if "shape" in weibull_result:
             x_vals = np.linspace(0, np.max(wind_speeds), 100)
@@ -49,7 +49,7 @@ def perform_wind_analysis():
             }
         results["weibull_analysis"] = weibull_result
 
-        # Histograma
+        # Histograma simple de velocidades (frecuencia)
         bins = np.arange(0, np.ceil(np.max(wind_speeds)) + 1)
         hist, bin_edges = np.histogram(wind_speeds, bins=bins, density=True)
         results["wind_speed_distribution"] = [
@@ -57,20 +57,24 @@ def perform_wind_analysis():
             for i in range(len(hist))
         ]
 
-        # Rosa de los vientos
+        # Rosa de los vientos (si se reciben direcciones)
         if wind_directions:
             wind_directions = np.array(wind_directions)
             valid_mask = (~np.isnan(wind_speeds)) & (~np.isnan(wind_directions))
             speeds = wind_speeds[valid_mask]
             dirs = wind_directions[valid_mask]
-            rose = generate_wind_rose(speeds, dirs)  # ✅ CORREGIDO
+            rose = generate_wind_rose(speeds, dirs)
             results["wind_rose_data"] = rose["wind_rose_data"]
-results["wind_rose_labels"] = {
-    "speed_labels": rose["speed_labels"],
-    "direction_labels": rose["direction_labels"]
-}
+            results["wind_rose_labels"] = {
+                "speed_labels": rose["speed_labels"],
+                "direction_labels": rose["direction_labels"]
+            }
 
-        # Media horaria
+        # Análisis de turbulencia
+        turbulence_result = analyzer.calculate_turbulence_intensity(wind_speeds)
+        results["turbulence_analysis"] = turbulence_result
+
+        # Media horaria simulada
         results["hourly_patterns"] = {
             "mean_by_hour": {
                 str(i): round(float(np.mean(wind_speeds[i::24])), 2)
@@ -78,9 +82,10 @@ results["wind_rose_labels"] = {
             }
         }
 
-        # Viabilidad
+        # Indicador de viabilidad básica (simulada)
         avg = np.mean(wind_speeds)
         std = np.std(wind_speeds)
+
         results["viability"] = {
             "viability_level": "Moderado" if avg > 5 else "Bajo",
             "viability_score": int(np.clip(avg * 10, 0, 100)),
@@ -150,7 +155,6 @@ def generate_wind_rose(wind_speeds, wind_directions):
         'direction_labels': dir_labels
     }
 
-
 def convert_numpy_to_json(obj):
     """
     Convierte objetos numpy a tipos JSON serializables
@@ -169,4 +173,3 @@ def convert_numpy_to_json(obj):
         return bool(obj)
     else:
         return obj
-
