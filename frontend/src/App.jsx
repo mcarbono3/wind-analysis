@@ -154,26 +154,37 @@ const prepareChartData = (analysis, era5Data, unit = 'kmh') => {
   const timestamps = safeArray(era5Data.timestamps);
   
   // Preparar datos de serie temporal
-  const timeSeriesData = [];
+  const timeSeriesData = safeArray(analysis.time_series?.map((entry) => ({
+  time: entry.time,
+  speed: convertWindSpeed(entry.speed, unit)
+})));
+
+if (timeSeriesData.length === 0 && windSpeeds100m.length > 0 && timestamps.length > 0) {
   const minLength = Math.min(windSpeeds100m.length, timestamps.length);
-  
   for (let i = 0; i < minLength; i++) {
-    if (timestamps[i] && windSpeeds100m[i] !== undefined) {
-      timeSeriesData.push({
-        time: timestamps[i],
-        speed: convertWindSpeed(windSpeeds100m[i], unit)
-      });
-    }
+    timeSeriesData.push({
+      time: timestamps[i],
+      speed: convertWindSpeed(windSpeeds100m[i], unit)
+    });
   }
+}
 
   // Preparar datos de histograma de Weibull con múltiples fuentes posibles - PENDIENTE DE PRUEBA EN VERSION V8d
-  const weibullData = safeArray(analysis.weibull_analysis?.plot_data?.x_values.map((x, i) => ({
-    speed_bin: convertWindSpeed(x, unit),
-    frequency: analysis.weibull_analysis.plot_data.y_values[i]
-  })));
-  
-  // Preparar datos de rosa de vientos - PENDIENTE DE PRUEBA EN VERSION V8d
-  const windRoseData = safeArray(analysis.wind_rose?.data);
+   const weibullData = safeArray(
+  analysis.wind_speed_distribution?.map((entry) => ({
+    speed_bin: convertWindSpeed(entry.speed, unit),
+    frequency: safeNumber(entry.frequency)
+  }))
+);
+
+    // Preparar datos de rosa de vientos - PENDIENTE DE PRUEBA EN VERSION V8d
+  const windRoseData = safeArray(
+  analysis.wind_rose_data?.map((entry) => ({
+    direction: entry.direction,
+    frequency: safeNumber(entry.frequency)
+  }))
+);
+
   
   // Preparar datos de patrones horarios
   const hourlyData = [];
