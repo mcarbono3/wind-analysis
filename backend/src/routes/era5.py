@@ -95,33 +95,41 @@ class ERA5Service:
         lons = np.linspace(-77.0, -71.0, 25)
         return [[float(lat), float(lon), round(random.uniform(3, 11), 2)] for lat in lats for lon in lons]
 
-    def generate_analysis_data(self, lat_min, lat_max, lon_min, lon_max, start, end):
-        hours = int(((end - start).total_seconds()) / 3600)
-        timestamps = [(start + timedelta(hours=h)).isoformat() for h in range(0, hours + 1, 6)]
+def generate_analysis_data(self, lat_min, lat_max, lon_min, lon_max, start, end):
+    if end <= start:
+        raise ValueError("La fecha final debe ser posterior a la fecha de inicio.")
+    
+    total_seconds = (end - start).total_seconds()
+    if total_seconds < 3600:
+        raise ValueError("El rango de fechas debe cubrir al menos una hora.")
 
-        n = len(timestamps)
-        wind_10m = [round(6 + np.sin(i/10) + random.random(), 2) for i in range(n)]
-        wind_100m = [round(w * 1.25, 2) for w in wind_10m]
-        temp_2m = [round(26 + np.sin(i/10)*2 + random.random(), 1) for i in range(n)]
-        pressure = [round(1013 + np.cos(i/8)*4 + random.random(), 1) for i in range(n)]
-        dir_10m = list(np.random.uniform(0, 360, n))
-        dir_100m = list(np.random.uniform(0, 360, n))
+    hours = int(total_seconds // 3600)
+    timestamps = [(start + timedelta(hours=h)).isoformat() for h in range(0, hours + 1, 6)]
 
-        return {
-            "timestamps": timestamps,
-            "wind_speed_10m": wind_10m,
-            "wind_speed_100m": wind_100m,
-            "temperature_2m": temp_2m,
-            "surface_pressure": pressure,
-            "wind_direction_10m": dir_10m,
-            "wind_direction_100m": dir_100m,
-            "metadata": {
-                "region": "Norte de Colombia",
-                "generated_at": datetime.utcnow().isoformat() + "Z",
-                "version": "4.0",
-                "data_source": "simulated" if self.test_mode else "era5_real"
-            }
+    n = len(timestamps)
+    wind_10m = [round(6 + np.sin(i/10) + random.random(), 2) for i in range(n)]
+    wind_100m = [round(w * 1.25, 2) for w in wind_10m]
+    temp_2m = [round(26 + np.sin(i/10)*2 + random.random(), 1) for i in range(n)]
+    pressure = [round(1013 + np.cos(i/8)*4 + random.random(), 1) for i in range(n)]
+    dir_10m = list(np.random.uniform(0, 360, n))
+    dir_100m = list(np.random.uniform(0, 360, n))
+
+    return {
+        "timestamps": timestamps,
+        "wind_speed_10m": wind_10m,
+        "wind_speed_100m": wind_100m,
+        "temperature_2m": temp_2m,
+        "surface_pressure": pressure,
+        "wind_direction_10m": dir_10m,
+        "wind_direction_100m": dir_100m,
+        "metadata": {
+            "region": "Norte de Colombia",
+            "generated_at": datetime.utcnow().isoformat() + "Z",
+            "version": "4.0",
+            "data_source": "simulated" if self.test_mode else "era5_real"
         }
+    }
+
 
 @era5_bp.route("/wind-data", methods=["POST"])
 def get_wind_data():
