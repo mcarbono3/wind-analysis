@@ -1005,18 +1005,23 @@ return (
     </CardTitle>
   </CardHeader>
   <CardContent className="space-y-4">
-    <p><strong>Área Analizada:</strong> {areaCoords}</p>
-    <p><strong>Fecha de Inicio:</strong> {dateRange?.startDate || 'N/A'}</p>
-    <p><strong>Fecha de Fin:</strong> {dateRange?.endDate || 'N/A'}</p>
+    <p>
+      <strong>Área Analizada:</strong>{" "}
+      {analysisData?.location?.bounds
+        ? `${analysisData.location.bounds[0][0].toFixed(2)}°, ${analysisData.location.bounds[0][1].toFixed(2)}° a ${analysisData.location.bounds[1][0].toFixed(2)}°, ${analysisData.location.bounds[1][1].toFixed(2)}°`
+        : "No disponible"}
+    </p>
+    <p><strong>Fecha de Inicio:</strong> {dateRange?.startDate || "N/A"}</p>
+    <p><strong>Fecha de Fin:</strong> {dateRange?.endDate || "N/A"}</p>
 
-    <div className={`p-3 rounded-md ${getViabilityColor(viability.level)} text-white flex flex-col space-y-1`}>
+    <div className={`p-3 rounded-md ${getViabilityColor(viability.level)} text-white`}>
       <div className="flex items-center space-x-2 text-lg font-semibold">
         <span className="text-2xl">{getViabilityIcon(viability.message)}</span>
         <span>{viability.message}</span>
       </div>
-      <div className="text-sm">Nivel: <strong>{viability.level}</strong> | Puntuación: <strong>{viability.score}</strong></div>
+      <p className="text-sm">Nivel: <strong>{viability.level}</strong> | Puntuación: <strong>{viability.score}</strong></p>
       {viability.recommendations.length > 0 && (
-        <ul className="list-disc pl-6 text-sm">
+        <ul className="list-disc pl-6 text-sm mt-1">
           {viability.recommendations.map((rec, i) => (
             <li key={i}>{rec}</li>
           ))}
@@ -1025,11 +1030,12 @@ return (
     </div>
 
     <p className="text-sm text-gray-700">
-      <strong>Velocidad Promedio del Viento (100m):</strong> {formatNumber(stats.mean_wind_speed_100m)} {windUnit === 'kmh' ? 'km/h' : 'm/s'}
+      <strong>Velocidad Promedio del Viento (100m):</strong>{" "}
+      {formatNumber(extractStatistics(analysisData.analysis, windUnit).mean_wind_speed_100m)}{" "}
+      {windUnit === "kmh" ? "km/h" : "m/s"}
     </p>
   </CardContent>
 </Card>
-
                 {/* Estadísticas Principales */}
                 <Card>
                   <CardHeader>
