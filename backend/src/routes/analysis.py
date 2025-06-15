@@ -21,7 +21,7 @@ def perform_wind_analysis():
 
         wind_speeds = np.array(data['wind_speeds'])
         timestamps = data.get('timestamps', [f"T{i:02d}:00" for i in range(len(wind_speeds))])
-        wind_directions = data.get('wind_directions', [None] * len(wind_speeds))
+        wind_directions = data.get('wind_directions', None)
         air_density = data.get('air_density', None)
 
         analyzer = WindAnalysis()
@@ -32,15 +32,6 @@ def perform_wind_analysis():
         results["time_series"] = [
             {"time": ts, "speed": float(s)} for ts, s in zip(timestamps, wind_speeds)
         ]
-
-        # Agregar wind_rose_data (si hay direcciones válidas)
-        if wind_directions and any(d is not None for d in wind_directions):
-            wind_directions = np.array(wind_directions)
-            valid_mask = (~np.isnan(wind_speeds)) & (~np.isnan(wind_directions))
-            speeds = wind_speeds[valid_mask]
-            dirs = wind_directions[valid_mask]
-            rose = analyzer.generate_wind_rose(speeds, dirs)
-            results["wind_rose_data"] = rose["wind_rose_data"]
 
         # Agregar gráfico de Weibull
         weibull_result = analyzer.fit_weibull_distribution(wind_speeds)
@@ -100,7 +91,6 @@ def perform_wind_analysis():
                 "Verificar accesibilidad logística"
             ]
         }
-
         results = convert_numpy_to_json(results)
 
         return jsonify({
@@ -111,7 +101,48 @@ def perform_wind_analysis():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+def generate_wind_rose(wind_speeds, wind_directions):
+    """
+    Genera datos de rosa de los vientos para gráficos.
+    """
+    dir_bins = np.arange(0, 361, 22.5)
+    dir_labels = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
+                  'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW']
 
+    speed_bins = [0, 3, 6, 9, 12, 15, 20, 100]
+    speed_labels = ['0-3', '3-6', '6-9', '9-12', '12-15', '15-20', '>20']
+
+    wind_rose_data = []
+
+    for i, dir_label in enumerate(dir_labels):
+        dir_min = dir_bins[i]
+        dir_max = dir_bins[i + 1] if i < len(dir_bins) - 1 else 360
+
+        if dir_label == 'N':
+            dir_mask = (wind_directions >= 348.75) | (wind_directions < 11.25)
+        else:
+            dir_mask = (wind_directions >= dir_min) & (wind_directions < dir_max)
+
+        dir_speeds = wind_speeds[dir_mask]
+        speed_frequencies = []
+
+        for j in range(len(speed_bins) - 1):
+            speed_mask = (dir_speeds >= speed_bins[j]) & (dir_speeds < speed_bins[j + 1])
+            frequency = np.sum(speed_mask) / len(wind_speeds) * 100
+            speed_frequencies.append(frequency)
+
+        wind_rose_data.append({
+            'direction': dir_label,
+            'angle': (dir_min + dir_max) / 2 if dir_label != 'N' else 0,
+            'frequencies': speed_frequencies,
+            'total_frequency': np.sum(speed_frequencies)
+        })
+
+    return {
+        'wind_rose_data': wind_rose_data,
+        'speed_labels': speed_labels,
+        'direction_labels': dir_labels
+    }
 
 def convert_numpy_to_json(obj):
     """
