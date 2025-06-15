@@ -17,7 +17,7 @@ era5_bp = Blueprint("era5", __name__)
 class ERA5Service:
     def __init__(self):
         self.test_mode = False
-        logger.info("ERA5Service v3.4 inicializado - Dataset corregido según recomendaciones ERA-Copernicus")
+        logger.info("ERA5Service v4.0 inicializado - Dataset correcto: reanalysis-era5-single-levels")
 
     def safe_get(self, lst, index, default=None):
         try:
@@ -62,7 +62,8 @@ class ERA5Service:
 
     def get_wind_average_data_real(self):
         """
-        Método corregido usando el dataset y estructura recomendada por ERA-Copernicus
+        Método corregido usando el dataset correcto: reanalysis-era5-single-levels
+        Basado en el ejemplo oficial de ECMWF
         """
         try:
             # Verificar credenciales
@@ -70,77 +71,100 @@ class ERA5Service:
             if not cds_key:
                 raise ValueError("La variable de entorno CDSAPI_KEY no está configurada.")
             
-            # Usar configuración estándar del cliente CDS (sin parámetros personalizados)
+            # Usar configuración estándar del cliente CDS (como en el ejemplo oficial)
             client = cdsapi.Client()
             
-            logger.info("🌍 Solicitando datos de ERA5 usando dataset recomendado...")
+            logger.info("🌍 Solicitando datos de ERA5 usando dataset correcto: reanalysis-era5-single-levels")
             
-            # Archivo temporal para los datos
-            with tempfile.NamedTemporaryFile(suffix=".grib", delete=False) as temp_file:
-                temp_path = temp_file.name
+            # Coordenadas para Norte de Colombia
+            north, west, south, east = 13.0, -77.0, 7.0, -71.0
+            
+            # Archivos temporales para componentes U y V
+            with tempfile.NamedTemporaryFile(suffix=".nc", delete=False) as u_temp:
+                u_file = u_temp.name
+            
+            with tempfile.NamedTemporaryFile(suffix=".nc", delete=False) as v_temp:
+                v_file = v_temp.name
             
             try:
-                # Request basado en el código recomendado por ERA-Copernicus
-                # Adaptado para obtener datos de viento en superficie
-                request = {
-                    "product_type": ["reanalysis"],
-                    "variable": ["10m_u_component_of_wind"],  # Componente U del viento
-                    "year": ["2023"],
-                    "month": ["01", "02", "03"],  # Primeros 3 meses
-                    "day": ["01", "15"],  # Días 1 y 15 de cada mes
-                    "time": [
-                        "00:00", "06:00", "12:00", "18:00"
-                    ],
-                    "area": [13.0, -77.0, 7.0, -71.0],  # Norte, Oeste, Sur, Este
-                    "data_format": "grib",
-                    "download_format": "unarchived"
+                logger.info("📡 Descargando componente U del viento...")
+                
+                # Request basado en el ejemplo oficial de ECMWF
+                # Estructura exacta del ejemplo: https://github.com/ecmwf/cdsapi/blob/master/example-era5.py
+                u_request = {
+                    "variable": "10m_u_component_of_wind",
+                    "product_type": "reanalysis",
+                    "date": "2023-01-01/2023-01-03",  # Rango de fechas
+                    "time": ["00:00", "06:00", "12:00", "18:00"],
+                    "area": [north, west, south, east],  # Norte, Oeste, Sur, Este
+                    "format": "netcdf",
                 }
                 
-                logger.info("📡 Descargando componente U del viento...")
-                logger.info(f"Dataset: reanalysis-era5-pressure-levels")
-                logger.info(f"Request: {request}")
+                logger.info(f"Dataset: reanalysis-era5-single-levels")
+                logger.info(f"Request U: {u_request}")
                 
-                # Usar el dataset recomendado por ERA-Copernicus
-                client.retrieve("reanalysis-era5-pressure-levels", request).download(temp_path)
+                # Usar el dataset correcto
+                r_u = client.retrieve("reanalysis-era5-single-levels", u_request)
+                r_u.download(u_file)
                 
-                # Verificar que el archivo se descargó correctamente
-                if os.path.exists(temp_path) and os.path.getsize(temp_path) > 0:
-                    logger.info(f"✅ Descarga exitosa: {os.path.getsize(temp_path)} bytes")
+                logger.info("📡 Descargando componente V del viento...")
+                
+                # Request para componente V del viento
+                v_request = {
+                    "variable": "10m_v_component_of_wind",
+                    "product_type": "reanalysis",
+                    "date": "2023-01-01/2023-01-03",  # Rango de fechas
+                    "time": ["00:00", "06:00", "12:00", "18:00"],
+                    "area": [north, west, south, east],  # Norte, Oeste, Sur, Este
+                    "format": "netcdf",
+                }
+                
+                logger.info(f"Request V: {v_request}")
+                
+                r_v = client.retrieve("reanalysis-era5-single-levels", v_request)
+                r_v.download(v_file)
+                
+                # Verificar que los archivos se descargaron correctamente
+                if os.path.exists(u_file) and os.path.getsize(u_file) > 0 and \
+                   os.path.exists(v_file) and os.path.getsize(v_file) > 0:
+                    
+                    logger.info(f"✅ Descarga exitosa: U={os.path.getsize(u_file)} bytes, V={os.path.getsize(v_file)} bytes")
                     
                     # Procesar datos con xarray
                     logger.info("🔄 Procesando datos con xarray...")
-                    ds = xr.open_dataset(temp_path, engine='cfgrib')
+                    ds_u = xr.open_dataset(u_file)
+                    ds_v = xr.open_dataset(v_file)
                     
-                    # Extraer datos de viento
-                    wind_data = ds["u"]  # Componente U del viento
+                    # Calcular velocidad del viento
+                    wind_speed = np.sqrt(ds_u["u10"]**2 + ds_v["v10"]**2)
                     
                     # Calcular promedio temporal
-                    wind_avg = wind_data.mean(dim="time")
+                    wind_speed_avg = wind_speed.mean(dim="time")
                     
                     # Extraer puntos de datos
                     data_points = []
-                    for lat in wind_avg.latitude.values:
-                        for lon in wind_avg.longitude.values:
-                            val = wind_avg.sel(latitude=lat, longitude=lon, method="nearest").item()
+                    for lat in wind_speed_avg.latitude.values:
+                        for lon in wind_speed_avg.longitude.values:
+                            val = wind_speed_avg.sel(latitude=lat, longitude=lon, method="nearest").item()
                             if not np.isnan(val):
-                                # Convertir velocidad de componente U a velocidad absoluta aproximada
-                                wind_speed = abs(float(val)) * 1.4  # Factor de conversión aproximado
-                                data_points.append([float(lat), float(lon), wind_speed])
+                                data_points.append([float(lat), float(lon), float(val)])
                     
                     logger.info(f"✅ Datos procesados: {len(data_points)} puntos de viento promedio")
                     return data_points
                 else:
-                    raise ValueError("El archivo descargado está vacío")
+                    raise ValueError("Los archivos descargados están vacíos")
                     
             except Exception as e:
                 logger.error(f"❌ Error al descargar datos de ERA5: {e}")
                 raise
                 
             finally:
-                # Limpiar archivo temporal
+                # Limpiar archivos temporales
                 try:
-                    if os.path.exists(temp_path):
-                        os.unlink(temp_path)
+                    if os.path.exists(u_file):
+                        os.unlink(u_file)
+                    if os.path.exists(v_file):
+                        os.unlink(v_file)
                 except:
                     pass
                     
@@ -254,7 +278,7 @@ class ERA5Service:
                     "date_range": f"{start_date} to {end_date}",
                     "data_source": "ERA5_simulated",
                     "generated_at": datetime.now().isoformat(),
-                    "version": "3.4",
+                    "version": "4.0",
                     "format": "frontend_compatible"
                 }
             }
@@ -276,10 +300,10 @@ class ERA5Service:
 def get_wind_data():
     """
     Endpoint principal para obtener datos de viento
-    Versión 3.4 - Dataset corregido según recomendaciones ERA-Copernicus
+    Versión 4.0 - Dataset correcto: reanalysis-era5-single-levels
     """
     try:
-        logger.info("🚀 === INICIO SOLICITUD WIND-DATA v3.4 ===")
+        logger.info("🚀 === INICIO SOLICITUD WIND-DATA v4.0 ===")
         
         # Obtener y validar datos JSON
         data = request.get_json()
@@ -370,7 +394,7 @@ def get_wind_average_10m():
                 "units": "m/s",
                 "data_source": data_source,
                 "generated_at": datetime.now().isoformat(),
-                "version": "1.2",
+                "version": "2.0",
                 "format": "leaflet_heat_compatible",
                 "description": "Datos para visualización de capa de calor en mapa inicial"
             }
