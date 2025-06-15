@@ -12,6 +12,9 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import axios from 'axios';
 import 'leaflet/dist/leaflet.css';
 import './App.css';
+import { utils as XLSXUtils, writeFile as XLSXWriteFile } from "xlsx";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 
 // Configuración de la API
 const API_BASE_URL = 'https://wind-analysis.onrender.com/api';
@@ -79,7 +82,6 @@ const normalizeAnalysisData = (rawAnalysis) => {
     return null;
   }
   
-    const u = unit;
   return {
     basic_statistics: rawAnalysis.basic_statistics || {},
     capacity_factor: rawAnalysis.capacity_factor || {},
@@ -632,9 +634,6 @@ const analysisResponse = await axios.post(`${API_BASE_URL}/wind-analysis`, {
    const dateValidationError = getDateValidationError();
 
   console.log('🧪 Estado del botón - loading:', loading, '| selectedArea:', selectedArea, '| dateValidationError:', dateValidationError);
-import { utils as XLSXUtils, writeFile as XLSXWriteFile } from "xlsx";
-import jsPDF from "jspdf";
-import "jspdf-autotable";
 
 // ✅ Exportar a CSV (completo y profesional)
 const exportToCSV = () => {
