@@ -32,64 +32,6 @@ Sistema web avanzado para el análisis del potencial eólico en la región Carib
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
-## 🚀 Instalación Rápida
-
-### Prerrequisitos
-
-- Python 3.11+
-- Node.js 20+
-- Cuenta en Copernicus Climate Data Store (CDS)
-- Docker (opcional, para despliegue)
-
-### 1. Clonar el Repositorio
-
-```bash
-git clone https://github.com/tu-usuario/wind-analysis-caribbean.git
-cd wind-analysis-caribbean
-```
-
-### 2. Configurar Credenciales ERA5
-
-1. Registrarse en [Copernicus CDS](https://cds.climate.copernicus.eu/user/register)
-2. Obtener el token de API desde [CDS API](https://cds.climate.copernicus.eu/how-to-api)
-3. Crear archivo `~/.cdsapirc`:
-
-```ini
-url: https://cds.climate.copernicus.eu/api
-key: TU_USER_ID:TU_API_TOKEN
-```
-
-### 3. Instalación con Docker (Recomendado)
-
-```bash
-# Construir y ejecutar todos los servicios
-docker-compose up --build
-
-# La aplicación estará disponible en:
-# Frontend: http://localhost
-# Backend API: http://localhost:5000
-```
-
-### 4. Instalación Manual
-
-#### Backend (Flask)
-
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # En Windows: venv\Scripts\activate
-pip install -r requirements.txt
-python src/main.py
-```
-
-#### Frontend (React)
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
 ## 📖 Guía de Uso
 
 ### 1. Selección de Área
@@ -382,7 +324,7 @@ Apoyar la planificación de políticas energéticas y metas de energía renovabl
 
 - **Issues**: [GitHub Issues](https://github.com/tu-usuario/wind-analysis-caribbean/issues)
 - **Documentación**: [Wiki del proyecto](https://github.com/tu-usuario/wind-analysis-caribbean/wiki)
-- **Email**: soporte@wind-analysis.com
+- **Email**: info.sanaltek@gmail.com
 
 ## 📄 Licencia
 
