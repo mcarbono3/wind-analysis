@@ -387,6 +387,7 @@ function MapSelector({ onAreaSelect, selectedArea, isSelecting, setIsSelecting }
 // Componente principal AnalysisPage
 const AnalysisPage = ({ onBackToHome }) => {
   const [selectedArea, setSelectedArea] = useState(null);
+  const [showHeatmap, setShowHeatmap] = useState(false);
   const [windUnit, setWindUnit] = useState('kmh');
 
   // Estados para el heatmap de viento promedio
@@ -887,16 +888,33 @@ const AnalysisPage = ({ onBackToHome }) => {
           </TabsList>
 
           {/* Tab: Mapa */}
+<Tabs defaultValue="map" className="w-full">
+  <TabsList>
+    <TabsTrigger value="map">Mapa</TabsTrigger>
+  </TabsList>
           <TabsContent value="map" className="space-y-6">
             <Card>
-              <CardHeader>
+              <CardHeader className="flex items-center justify-between">
                 <CardTitle className="flex items-center space-x-2">
                   <MapPin className="h-5 w-5" />
                   <span>Seleccionar Área de Análisis</span>
                 </CardTitle>
-              </CardHeader>
-
-              <CardContent>
+              
+		  {/* Checkbox alineado a la derecha */}
+ 		 <div className="flex items-center space-x-2">
+  		  <input
+   		   type="checkbox"
+   		   id="toggle-heatmap"
+   		   checked={showHeatmap}
+   		   onChange={() => setShowHeatmap(!showHeatmap)}
+   		 />
+   		 <label htmlFor="toggle-heatmap" className="text-sm">
+   		   Capa de calor (vel. Viento)
+    		</label>
+ 		 </div>
+		</CardHeader>
+		              
+		<CardContent>
                 {/* Mapa principal con heatmap y selección */}
                 <div className="h-96 rounded-lg overflow-hidden border">
                   <MapContainer
@@ -910,10 +928,11 @@ const AnalysisPage = ({ onBackToHome }) => {
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                       attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                     />
-
+		    {/* Capa de calor, se activa solo si showHeatmap es true */}
+ 		   
                     {/* Capa de calor */}
-                    {windHeatmapData.length > 0 && (
-                      <WindHeatmapLayer data={windHeatmapData} />
+		    {showHeatmap && windHeatmapData.length > 0 && (
+  		    <WindHeatmapLayer data={windHeatmapData} />
                     )}
 
                     {/* Selector de área */}
@@ -940,6 +959,7 @@ const AnalysisPage = ({ onBackToHome }) => {
                 </div>
 
                 {/* Leyenda del heatmap */}
+		{showHeatmap && (
                 <div className="mt-4 p-3 bg-gray-50 rounded-lg">
                   <p className="text-sm font-medium mb-2">Leyenda - Velocidad del Viento (m/s):</p>
                   <div className="flex items-center space-x-4 text-xs">
@@ -965,6 +985,7 @@ const AnalysisPage = ({ onBackToHome }) => {
                     </div>
                   </div>
                 </div>
+		)}
 
                 {/* Controles */}
                 <div className="mt-4 flex flex-col lg:flex-row lg:justify-between lg:items-center space-y-3 lg:space-y-0">
@@ -1012,6 +1033,7 @@ const AnalysisPage = ({ onBackToHome }) => {
               </CardContent>
             </Card>
           </TabsContent>
+	</Tabs>
 
           {/* Tab: Configuración */}
           <TabsContent value="analysis" className="space-y-6">
@@ -1329,4 +1351,3 @@ const AnalysisPage = ({ onBackToHome }) => {
 };
 
 export default AnalysisPage;
-
