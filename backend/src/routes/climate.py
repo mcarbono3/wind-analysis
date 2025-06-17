@@ -5,7 +5,7 @@ import sys
 
 # Importar el módulo de análisis climatológico
 sys.path.append(os.path.dirname(__file__))
-from src.climate_analysis_module import ClimateAnalysisModule
+from src.services.climate_analysis_module import ClimateAnalysisModule
 
 climate_bp = Blueprint('climate', __name__)
 
