@@ -1,15 +1,16 @@
-
+import os
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report
 import joblib
 
-# Load the parsed data
-df = pd.read_csv("parsed_hurdat_data.csv", dtype={
-    "date": str,
-    "time": str
-})
+# === Ruta robusta al CSV ===
+base_dir = os.path.dirname(__file__)
+data_path = os.path.join(base_dir, 'database', 'parsed_hurdat_data.csv')
+
+# === Cargar los datos parseados ===
+df = pd.read_csv(data_path, dtype={"date": str, "time": str})
 
 # Define Colombian Caribbean bounding box (approximate)
 caribbean_bbox = {
@@ -80,6 +81,4 @@ print(classification_report(y_test, y_pred))
 model_filename = 'random_forest_model.joblib'
 joblib.dump(model, model_filename)
 print(f"\nModelo entrenado guardado como {model_filename}")
-
-
 
