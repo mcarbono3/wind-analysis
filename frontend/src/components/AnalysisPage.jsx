@@ -621,20 +621,6 @@ const AnalysisPage = ({ onBackToHome }) => {
         radius_km: 200
       });
 
-const aiDiagnosisResponse = await axios.post(`${API_BASE_URL}/ai-diagnosis`, {
-  analysis_data: {
-    basic_statistics: analysisResult.basic_statistics || {},
-    weibull_analysis: analysisResult.weibull_analysis || {},
-    turbulence_analysis: analysisResult.turbulence_analysis || {},
-    power_density: analysisResult.power_density || {},
-    capacity_factor: analysisResult.capacity_factor || {},
-    wind_probabilities: analysisResult.wind_probabilities || {}
-  }
-});
-
-
-      console.log('🤖 Enhanced AI Diagnosis received:', aiDiagnosisResponse.data);
-
       // 2. Obtener datos de ERA5 del backend (para gráficos y análisis detallado)
       console.log('📡 Requesting ERA5 data from backend with parameters:', {
         lat_min: selectedArea[0][0],
@@ -693,11 +679,22 @@ const aiDiagnosisResponse = await axios.post(`${API_BASE_URL}/ai-diagnosis`, {
       });
 
       const analysisResult = analysisResponse.data.analysis || {};
-
 if (!analysisResult || Object.keys(analysisResult).length === 0) {
   throw new Error('Se requieren datos de análisis para el diagnóstico IA');
 }
 
+const aiDiagnosisResponse = await axios.post(`${API_BASE_URL}/ai-diagnosis`, {
+  analysis_data: {
+    basic_statistics: analysisResult.basic_statistics || {},
+    weibull_analysis: analysisResult.weibull_analysis || {},
+    turbulence_analysis: analysisResult.turbulence_analysis || {},
+    power_density: analysisResult.power_density || {},
+    capacity_factor: analysisResult.capacity_factor || {},
+    wind_probabilities: analysisResult.wind_probabilities || {}
+  }
+});
+
+      console.log('🤖 Enhanced AI Diagnosis received:', aiDiagnosisResponse.data);
 
       // 4. Combinar resultados del diagnóstico de IA con el análisis tradicional
       const combinedAnalysis = {
