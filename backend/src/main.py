@@ -7,8 +7,6 @@ from flask import Flask, send_from_directory
 from flask_cors import CORS
 from src.models.user import db
 from src.routes.user import user_bp
-from src.routes.era5 import era5_bp
-from src.routes.analysis import analysis_bp
 from src.routes.climate import climate_bp
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
