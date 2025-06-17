@@ -621,11 +621,17 @@ const AnalysisPage = ({ onBackToHome }) => {
         radius_km: 200
       });
 
-      const aiDiagnosisResponse = await axios.post(`${API_BASE_URL}/ai-diagnosis`, {
-        latitude: centerLat,
-        longitude: centerLon,
-        radius_km: 200
-      });
+const aiDiagnosisResponse = await axios.post(`${API_BASE_URL}/ai-diagnosis`, {
+  analysis_data: {
+    basic_statistics: analysisResult.basic_statistics || {},
+    weibull_analysis: analysisResult.weibull_analysis || {},
+    turbulence_analysis: analysisResult.turbulence_analysis || {},
+    power_density: analysisResult.power_density || {},
+    capacity_factor: analysisResult.capacity_factor || {},
+    wind_probabilities: analysisResult.wind_probabilities || {}
+  }
+});
+
 
       console.log('🤖 Enhanced AI Diagnosis received:', aiDiagnosisResponse.data);
 
@@ -687,6 +693,11 @@ const AnalysisPage = ({ onBackToHome }) => {
       });
 
       const analysisResult = analysisResponse.data.analysis || {};
+
+if (!analysisResult || Object.keys(analysisResult).length === 0) {
+  throw new Error('Se requieren datos de análisis para el diagnóstico IA');
+}
+
 
       // 4. Combinar resultados del diagnóstico de IA con el análisis tradicional
       const combinedAnalysis = {
