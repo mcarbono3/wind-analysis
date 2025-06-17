@@ -30,11 +30,14 @@ class ClimateAnalysisModule:
     def load_data(self):
         """Carga los datos de huracanes y el modelo entrenado."""
         try:
+            print("📥 Intentando cargar:", self.hurdat_data_path)
+            print("📦 Intentando cargar modelo:", self.model_path)
             self.df = pd.read_csv(self.hurdat_data_path, dtype={
                 "date": str,
                 "time": str
             })
             self.model = joblib.load(self.model_path)
+            print("✅ Carga exitosa")
             return True
         except Exception as e:
             print(f"Error cargando datos o modelo: {e}")
