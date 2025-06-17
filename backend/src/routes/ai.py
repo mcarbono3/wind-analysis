@@ -10,7 +10,7 @@ from climate_analysis_module import ClimateAnalysisModule
 ai_bp = Blueprint('ai', __name__)
 
 # Rutas a los archivos de datos y modelo
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))  # Apunta a backend/src
+PROJECT_ROOT = os.path.abspath(os.path.dirname(__file__))  # Apunta directamente a backend/src
 DATABASE_PATH = os.path.join(PROJECT_ROOT, 'database')
 
 HURDAT_DATA_PATH = os.path.join(DATABASE_PATH, 'parsed_hurdat_data.csv')
@@ -21,6 +21,9 @@ climate_module = ClimateAnalysisModule(
     hurdat_data_path=HURDAT_DATA_PATH,
     model_path=MODEL_PATH
 )
+# 👇 Debug: imprimir rutas cargadas
+print("📂 Ruta CSV:", HURDAT_DATA_PATH)
+print("📂 Ruta modelo:", MODEL_PATH)
 
 @ai_bp.route('/ai-diagnosis', methods=['POST'])
 @cross_origin()
