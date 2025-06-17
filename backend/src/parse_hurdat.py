@@ -66,8 +66,8 @@ def parse_hurdat_data(file_path):
     return df
 
 def parse_hurdat_to_csv(
-    file_path='src/database/hurdat2.txt',
-    output_path='src/database/parsed_hurdat_data.csv'
+    file_path='database/hurdat2.txt',
+    output_path='database/parsed_hurdat_data.csv'
 ):
     hurdat_df = parse_hurdat_data(file_path)
 
@@ -81,5 +81,6 @@ def parse_hurdat_to_csv(
     print("✅ Datos parseados y guardados en parsed_hurdat_data.csv")
 
     return output_path
-
+if __name__ == '__main__':
+    parse_hurdat_to_csv()
 
