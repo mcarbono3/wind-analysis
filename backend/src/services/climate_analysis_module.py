@@ -32,6 +32,9 @@ class ClimateAnalysisModule:
     def load_data(self):
         """Carga los datos de huracanes y el modelo entrenado."""
         try:
+            print(f"📂 Verificando existencia de archivos...")
+            print(f"🧪 CSV path: {self.hurdat_data_path} | Existe: {os.path.exists(self.hurdat_data_path)}")
+            print(f"🧪 Model path: {self.model_path} | Existe: {os.path.exists(self.model_path)}")
             self.df = pd.read_csv(self.hurdat_data_path, dtype={
                 "date": str,
                 "time": str
