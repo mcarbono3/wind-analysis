@@ -17,6 +17,9 @@ app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
 # Habilitar CORS para todas las rutas
 CORS(app)
 
+from src.routes.ai import ai_bp
+from src.routes.export import export_bp
+
 app.register_blueprint(user_bp, url_prefix='/api')
 app.register_blueprint(climate_bp, url_prefix='/api')
 app.register_blueprint(era5_bp, url_prefix='/api')
