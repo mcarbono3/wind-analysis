@@ -49,7 +49,9 @@ def serve(path):
             return send_from_directory(static_folder_path, 'index.html')
         else:
             return "index.html not found", 404
-
+print("🔍 Verificación previa al arranque:")
+print(" - parsed_hurdat_data.csv existe:", os.path.exists(os.path.join(os.path.dirname(__file__), 'database', 'parsed_hurdat_data.csv')))
+print(" - random_forest_model.joblib existe:", os.path.exists(os.path.join(os.path.dirname(__file__), 'database', 'random_forest_model.joblib')))
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
