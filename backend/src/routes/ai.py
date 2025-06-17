@@ -33,7 +33,7 @@ def ai_diagnosis():
 
         latitude = data.get('latitude')
         longitude = data.get('longitude')
-        radius_km = data.get('radius_km', 200) # Default 200 km
+        radius_km = data.get('radius_km', 200)  # Default 200 km
 
         if latitude is None or longitude is None:
             return jsonify({"success": False, "error": "Se requieren los parámetros 'latitude' y 'longitude'"}), 400
@@ -51,31 +51,23 @@ def ai_diagnosis():
         if not climate_analysis_result.get("success"):
             return jsonify({"success": False, "error": f"Error en el análisis climatológico: {climate_analysis_result.get('error')}"}), 500
 
-        # 2. Placeholder para el diagnóstico estadístico (WindPotentialAI)
-        # Aquí iría la lógica para llamar al modelo estadístico existente (ai_diagnosis.py original)
-        # Por ahora, se simula una respuesta.
+        # 2. Diagnóstico estadístico generado por el modelo
         statistical_diagnosis = {
-            "wind_speed_avg": 8.5, # m/s
-            "turbulence_intensity": 0.12, # %
-            "power_density": 450, # W/m2
-            "viability_classification": "Moderado",
-            "details": "Análisis estadístico preliminar basado en datos históricos de viento."
+            "viability_classification": climate_analysis_result["predicted_impact"],
+            "details": "Clasificación generada automáticamente por el modelo Random Forest con métricas climatológicas.",
+            "metrics": climate_analysis_result["metrics"]
         }
 
-        # 3. Unificar los resultados
-        # Aquí se debería implementar una lógica más sofisticada para la evaluación consolidada
-        # Por simplicidad, se combinarán los diagnósticos y se generará una recomendación combinada.
-
-        # Evaluación de viabilidad consolidada (ejemplo simple)
+        # 3. Evaluación consolidada de viabilidad
         consolidated_viability = ""
-        if climate_analysis_result["predicted_impact"] == "positivo" and statistical_diagnosis["viability_classification"] == "Alto":
+        if climate_analysis_result["predicted_impact"] == "positivo":
             consolidated_viability = "Alta"
-        elif climate_analysis_result["predicted_impact"] == "negativo" or statistical_diagnosis["viability_classification"] == "Bajo":
+        elif climate_analysis_result["predicted_impact"] == "negativo":
             consolidated_viability = "Baja"
         else:
             consolidated_viability = "Moderada"
 
-        # Recomendaciones técnicas combinadas
+        # 4. Recomendaciones combinadas
         combined_recommendations = (
             f"Diagnóstico Climatológico: {climate_analysis_result['recommendation']}\n\n" +
             f"Diagnóstico Estadístico: {statistical_diagnosis['details']} " +
@@ -83,7 +75,7 @@ def ai_diagnosis():
             "Recomendación Consolidada: Se sugiere un análisis más profundo de la interacción entre los patrones de viento y los eventos extremos para optimizar el diseño del proyecto."
         )
 
-        # Explicaciones detalladas de cada modelo
+        # 5. Explicaciones detalladas
         detailed_explanations = {
             "climate_analysis_module": {
                 "description": "Módulo que analiza la viabilidad eólica desde una perspectiva climatológica, utilizando registros históricos de huracanes y tormentas tropicales para calcular indicadores de riesgo y oportunidad energética.",
@@ -91,11 +83,13 @@ def ai_diagnosis():
                 "predicted_impact": climate_analysis_result["predicted_impact"]
             },
             "statistical_diagnosis": {
-                "description": "Módulo que evalúa la viabilidad del sitio basándose en métricas estadísticas derivadas de mediciones eólicas, como velocidad media del viento, turbulencia, y densidad de potencia.",
-                "metrics_calculated": statistical_diagnosis # Puedes expandir esto con más métricas si el modelo estadístico las proporciona
+                "description": "Modelo de Random Forest entrenado para predecir impacto neto con base en métricas climatológicas.",
+                "metrics_calculated": statistical_diagnosis["metrics"],
+                "predicted_impact": statistical_diagnosis["viability_classification"]
             }
         }
 
+        # 6. Resultado unificado
         unified_result = {
             "success": True,
             "latitude": latitude,
@@ -125,5 +119,4 @@ def ai_model_info():
 @cross_origin()
 def retrain_model():
     return jsonify({"message": "Retrain Model endpoint - Placeholder"})
-
 
