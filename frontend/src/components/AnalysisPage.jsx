@@ -692,6 +692,7 @@ const AnalysisPage = ({ onBackToHome }) => {
       const combinedAnalysis = {
         ...analysisResult,
         // Datos del diagnóstico de IA mejorado
+	ai_diagnosis: aiDiagnosisResponse.data.ai_diagnosis, // NUEVO
         statistical_diagnosis: aiDiagnosisResponse.data.statistical_diagnosis || {},
         climate_diagnosis: aiDiagnosisResponse.data.climate_diagnosis || {},
         consolidated_viability: aiDiagnosisResponse.data.consolidated_viability || '',
@@ -771,7 +772,8 @@ const AnalysisPage = ({ onBackToHome }) => {
 
   // Extraer viabilidad mejorada
   const enhancedViability = extractEnhancedViability(analysisData.analysis);
-  
+  const aiDiagnosis = safeGet(analysisData.analysis, 'ai_diagnosis', {});
+
   // Fallback a viabilidad original
   const viability = extractViability(analysisData.analysis);
 
@@ -871,6 +873,27 @@ const AnalysisPage = ({ onBackToHome }) => {
     const consolidatedViabilityText = enhancedViability.consolidated_viability || viability.level || "No disponible";
     doc.text(`Viabilidad Consolidada: ${consolidatedViabilityText}`, 14, startY);
     startY += 10;
+
+// Diagnóstico IA detallado
+doc.setFont(undefined, 'bold');
+doc.text("Diagnóstico con IA", 14, startY);
+startY += 6;
+doc.setFont(undefined, 'normal');
+
+doc.text(`Clasificación: ${aiDiagnosis?.prediction || 'N/A'}`, 14, startY);
+startY += 5;
+doc.text(`Confianza: ${aiDiagnosis?.confidence ? aiDiagnosis.confidence.toFixed(2) + '%' : 'N/A'}`, 14, startY);
+startY += 6;
+
+// Factores clave explicativos
+if (Array.isArray(aiDiagnosis?.explanation?.key_factors)) {
+  doc.text("Factores Clave:", 14, startY);
+  startY += 5;
+  aiDiagnosis.explanation.key_factors.forEach(f => {
+    doc.text(`- ${f}`, 16, startY);
+    startY += 4;
+  });
+}
 
     // Secciones que se exportarán
     const sections = [
@@ -1310,6 +1333,45 @@ const AnalysisPage = ({ onBackToHome }) => {
                     </p>
                   </CardContent>
                 </Card>
+<Card>
+  <CardHeader>
+    <CardTitle className="text-lg font-semibold flex items-center space-x-2">
+      <Zap className="h-5 w-5 text-indigo-600" />
+      <span>Diagnóstico IA Detallado</span>
+    </CardTitle>
+  </CardHeader>
+  <CardContent className="space-y-2 text-sm">
+    <p><strong>Clasificación Predicha:</strong> {safeGet(aiDiagnosis, 'prediction', 'No disponible')}</p>
+    <p><strong>Confianza:</strong> {formatPercentage(safeNumber(aiDiagnosis?.confidence || 0) / 100)}</p>
+
+    <div>
+      <strong>Factores Clave:</strong>
+      <ul className="list-disc list-inside ml-4 text-gray-700">
+        {safeArray(aiDiagnosis?.explanation?.key_factors).map((factor, idx) => (
+          <li key={idx}>{factor}</li>
+        ))}
+      </ul>
+    </div>
+
+    <div>
+      <strong>Recomendaciones:</strong>
+      <ul className="list-disc list-inside ml-4 text-gray-700">
+        {safeArray(aiDiagnosis?.explanation?.recommendations).map((rec, idx) => (
+          <li key={idx}>{rec}</li>
+        ))}
+      </ul>
+    </div>
+
+    <div>
+      <strong>Probabilidades por Clase:</strong>
+      <ul className="list-disc list-inside ml-4 text-gray-700">
+        {Object.entries(aiDiagnosis?.class_probabilities || {}).map(([label, prob]) => (
+          <li key={label}>{label}: {formatPercentage(prob)}</li>
+        ))}
+      </ul>
+    </div>
+  </CardContent>
+</Card>
 
                 {/* Estadísticas Principales */}
                 <Card>
