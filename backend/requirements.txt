@@ -57,3 +57,5 @@ numpy
 pandas
 requests
 python-dotenv
+geopy==2.4.1
+geographiclib==2.0
