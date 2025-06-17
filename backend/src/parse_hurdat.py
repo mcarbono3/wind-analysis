@@ -1,4 +1,3 @@
-
 import pandas as pd
 
 def parse_hurdat_data(file_path):
@@ -30,7 +29,7 @@ def parse_hurdat_data(file_path):
             # Track data
             parts = [p.strip() for p in line.split(',')]
             date = parts[0]
-            time = parts[1].zfill(4) # Ensure time is 4 digits, zero-padded
+            time = parts[1].zfill(4)
             record_identifier = parts[2]
             storm_type = parts[3]
             latitude = parts[4]
@@ -48,8 +47,8 @@ def parse_hurdat_data(file_path):
                 'max_sustained_wind_knots': max_sustained_wind_knots,
                 'min_central_pressure_mb': min_central_pressure_mb
             })
-    
-    # Flatten the data for easier DataFrame creation
+
+    # Flatten the data
     flat_data = []
     for storm in parsed_data:
         for track in storm['tracks']:
@@ -61,26 +60,26 @@ def parse_hurdat_data(file_path):
             flat_data.append(flat_entry)
 
     df = pd.DataFrame(flat_data)
-
-    # Convert latitude and longitude to float
     df["latitude_float"] = df.apply(lambda row: float(row["latitude"][:-1]) * (1 if row["latitude"][-1] in ['N', 'n'] else -1), axis=1)
     df["longitude_float"] = df.apply(lambda row: float(row["longitude"][:-1]) * (-1 if row["longitude"][-1] in ['W', 'w'] else 1), axis=1)
 
     return df
 
-file_path = '/home/ubuntu/upload/Datos_Huracanes_Atlantico.txt'
-hurdat_df = parse_hurdat_data(file_path)
+def parse_hurdat_to_csv(
+    file_path='src/database/hurdat2.txt',
+    output_path='src/database/parsed_hurdat_data.csv'
+):
+    hurdat_df = parse_hurdat_data(file_path)
 
-# Display first few rows and info
-print(hurdat_df.head())
-print(hurdat_df.info())
+    print(hurdat_df.head())
+    print(hurdat_df.info())
 
-# Add print statements to check types after parsing
-print("\nTypes after parsing:")
-print(hurdat_df[['date', 'time', 'latitude', 'longitude', 'latitude_float', 'longitude_float']].dtypes)
+    print("\nTypes after parsing:")
+    print(hurdat_df[['date', 'time', 'latitude', 'longitude', 'latitude_float', 'longitude_float']].dtypes)
 
-# Save to CSV for later use
-hurdat_df.to_csv('parsed_hurdat_data.csv', index=False)
-print("Datos parseados y guardados en parsed_hurdat_data.csv")
+    hurdat_df.to_csv(output_path, index=False)
+    print("✅ Datos parseados y guardados en parsed_hurdat_data.csv")
+
+    return output_path
 
 
