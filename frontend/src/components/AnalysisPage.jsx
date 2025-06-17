@@ -7,7 +7,7 @@ import { Label } from './ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Badge } from './ui/badge';
 import { Alert, AlertDescription } from './ui/alert';
-import { Wind, MapPin, Calendar, Download, BarChart3, TrendingUp, XCircle, ArrowLeft } from 'lucide-react';
+import { Wind, MapPin, Calendar, Download, BarChart3, TrendingUp, XCircle, ArrowLeft, CloudSnow, Zap } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 import axios from 'axios';
 import 'leaflet/dist/leaflet.css';
@@ -150,7 +150,13 @@ const normalizeAnalysisData = (rawAnalysis) => {
     wind_rose: rawAnalysis.wind_rose || {},
     time_series: safeArray(rawAnalysis.time_series),
     hourly_patterns: rawAnalysis.hourly_patterns || {},
-    monthly_patterns: rawAnalysis.monthly_patterns || {}
+    monthly_patterns: rawAnalysis.monthly_patterns || {},
+    // Nuevos campos para la viabilidad mejorada
+    statistical_diagnosis: rawAnalysis.statistical_diagnosis || {},
+    climate_diagnosis: rawAnalysis.climate_diagnosis || {},
+    consolidated_viability: rawAnalysis.consolidated_viability || '',
+    combined_recommendations: rawAnalysis.combined_recommendations || '',
+    detailed_explanations: rawAnalysis.detailed_explanations || {}
   };
 };
 
@@ -184,7 +190,45 @@ const extractStatistics = (analysis, unit = 'kmh') => {
   };
 };
 
-// Función para extraer datos de viabilidad
+// Función para extraer datos de viabilidad mejorada
+const extractEnhancedViability = (analysis) => {
+  // Viabilidad consolidada del nuevo sistema
+  const consolidatedViability = safeGet(analysis, 'consolidated_viability', '');
+  const combinedRecommendations = safeGet(analysis, 'combined_recommendations', '');
+  
+  // Diagnósticos individuales
+  const statisticalDiagnosis = safeGet(analysis, 'statistical_diagnosis', {});
+  const climateDiagnosis = safeGet(analysis, 'climate_diagnosis', {});
+  
+  // Explicaciones detalladas
+  const detailedExplanations = safeGet(analysis, 'detailed_explanations', {});
+  
+  // Fallback a la viabilidad original si no hay datos del nuevo sistema
+  const fallbackViability = extractViability(analysis);
+  
+  return {
+    consolidated_viability: consolidatedViability || fallbackViability.level,
+    combined_recommendations: combinedRecommendations || fallbackViability.recommendations.join('. '),
+    statistical_diagnosis: {
+      wind_speed_avg: safeNumber(statisticalDiagnosis.wind_speed_avg),
+      turbulence_intensity: safeNumber(statisticalDiagnosis.turbulence_intensity),
+      power_density: safeNumber(statisticalDiagnosis.power_density),
+      viability_classification: statisticalDiagnosis.viability_classification || 'No disponible',
+      details: statisticalDiagnosis.details || 'Sin detalles disponibles'
+    },
+    climate_diagnosis: {
+      metrics: climateDiagnosis.metrics || {},
+      predicted_impact: climateDiagnosis.predicted_impact || 'No disponible',
+      recommendation: climateDiagnosis.recommendation || 'Sin recomendación disponible'
+    },
+    detailed_explanations: {
+      climate_analysis_module: detailedExplanations.climate_analysis_module || {},
+      statistical_diagnosis: detailedExplanations.statistical_diagnosis || {}
+    }
+  };
+};
+
+// Función para extraer datos de viabilidad (original)
 const extractViability = (analysis) => {
   const viabilityData = safeGet(analysis, 'viability', {});
   const level = viabilityData.viability_level || 'No disponible';
@@ -566,7 +610,26 @@ const AnalysisPage = ({ onBackToHome }) => {
     console.log('🚀 Starting analysis...');
 
     try {
-      // 1. Obtener datos de ERA5 del backend
+      // Calcular el centro del área para el análisis de IA
+      const centerLat = (areaToAnalyze[0][0] + areaToAnalyze[1][0]) / 2;
+      const centerLon = (areaToAnalyze[0][1] + areaToAnalyze[1][1]) / 2;
+
+      // 1. Llamar al endpoint de diagnóstico de IA mejorado
+      console.log('🤖 Requesting enhanced AI diagnosis with parameters:', {
+        latitude: centerLat,
+        longitude: centerLon,
+        radius_km: 200
+      });
+
+      const aiDiagnosisResponse = await axios.post(`${API_BASE_URL}/ai-diagnosis`, {
+        latitude: centerLat,
+        longitude: centerLon,
+        radius_km: 200
+      });
+
+      console.log('🤖 Enhanced AI Diagnosis received:', aiDiagnosisResponse.data);
+
+      // 2. Obtener datos de ERA5 del backend (para gráficos y análisis detallado)
       console.log('📡 Requesting ERA5 data from backend with parameters:', {
         lat_min: selectedArea[0][0],
         lat_max: selectedArea[1][0],
@@ -615,7 +678,7 @@ const AnalysisPage = ({ onBackToHome }) => {
         throw new Error('Los datos de viento recibidos no tienen el formato esperado');
       }
     
-      // Agrega esta llamada al análisis con direcciones y timestamps
+      // 3. Análisis estadístico tradicional (para gráficos)
       const analysisResponse = await axios.post(`${API_BASE_URL}/wind-analysis`, {
         wind_speeds: era5Data.wind_speed_10m.flat(),
         wind_directions: era5Data.wind_direction_10m.flat(),
@@ -624,22 +687,30 @@ const AnalysisPage = ({ onBackToHome }) => {
       });
 
       const analysisResult = analysisResponse.data.analysis || {};
+
+      // 4. Combinar resultados del diagnóstico de IA con el análisis tradicional
+      const combinedAnalysis = {
+        ...analysisResult,
+        // Datos del diagnóstico de IA mejorado
+        statistical_diagnosis: aiDiagnosisResponse.data.statistical_diagnosis || {},
+        climate_diagnosis: aiDiagnosisResponse.data.climate_diagnosis || {},
+        consolidated_viability: aiDiagnosisResponse.data.consolidated_viability || '',
+        combined_recommendations: aiDiagnosisResponse.data.combined_recommendations || '',
+        detailed_explanations: aiDiagnosisResponse.data.detailed_explanations || {},
+        // Datos del análisis tradicional
+        wind_speed_distribution: analysisResult.wind_speed_distribution || [],
+        wind_rose_data: analysisResult.wind_rose_data || [],
+        time_series: analysisResult.time_series || [],
+        statistics: analysisResult.statistics || {},
+        viability: analysisResult.viability || {},
+      };
+
       setAnalysisData(prevData => ({
         ...prevData,
-        analysis: {
-          ...analysisResult,
-          wind_speed_distribution: analysisResult.wind_speed_distribution || [],
-          wind_rose_data: analysisResult.wind_rose_data || [],
-          time_series: analysisResult.time_series || [],
-          statistics: analysisResult.statistics || {},
-          viability: analysisResult.viability || {},
-        },
+        analysis: combinedAnalysis,
         location: {
           bounds: areaToAnalyze,
-          center: [
-            (areaToAnalyze[0][0] + areaToAnalyze[1][0]) / 2,
-            (areaToAnalyze[0][1] + areaToAnalyze[1][1]) / 2
-          ]
+          center: [centerLat, centerLon]
         },
         era5Data: {
           ...era5Data,
@@ -654,14 +725,14 @@ const AnalysisPage = ({ onBackToHome }) => {
       }));
 
       setActiveTab('results');
-      console.log('Analysis completed successfully. Navigating to results tab.');
+      console.log('Enhanced analysis completed successfully. Navigating to results tab.');
     } catch (err) {
-      console.error('Error during analysis request:', err);
+      console.error('Error during enhanced analysis request:', err);
       setError('Error al realizar el análisis: ' + (err.response?.data?.error || err.message));
-      console.log('Analysis failed. Error:', err.message);
+      console.log('Enhanced analysis failed. Error:', err.message);
     } finally {
       setLoading(false);
-      console.log('Analysis process finished. Loading set to false.');
+      console.log('Enhanced analysis process finished. Loading set to false.');
     }
   };
 
@@ -698,6 +769,10 @@ const AnalysisPage = ({ onBackToHome }) => {
     return '📊';
   };
 
+  // Extraer viabilidad mejorada
+  const enhancedViability = extractEnhancedViability(analysisData.analysis);
+  
+  // Fallback a viabilidad original
   const viability = extractViability(analysisData.analysis);
 
   const chartData = analysisData.analysis && analysisData.era5Data
@@ -734,7 +809,9 @@ const AnalysisPage = ({ onBackToHome }) => {
       "turbulence_analysis",
       "weibull_analysis",
       "viability",
-      "wind_probabilities"
+      "wind_probabilities",
+      "statistical_diagnosis",
+      "climate_diagnosis"
     ];
 
     sections.forEach(section => {
@@ -750,11 +827,18 @@ const AnalysisPage = ({ onBackToHome }) => {
       }
     });
 
+    // Agregar viabilidad consolidada
+    if (enhancedViability.consolidated_viability) {
+      rows.push({ Métrica: "--- VIABILIDAD CONSOLIDADA ---", Valor: "" });
+      rows.push({ Métrica: "Nivel de Viabilidad", Valor: enhancedViability.consolidated_viability });
+      rows.push({ Métrica: "Recomendaciones Combinadas", Valor: enhancedViability.combined_recommendations });
+    }
+
     const worksheet = XLSXUtils.json_to_sheet(rows);
     const workbook = XLSXUtils.book_new();
     XLSXUtils.book_append_sheet(workbook, worksheet, "Resultados");
 
-    XLSXWriteFile(workbook, "analisis_eolico.csv");
+    XLSXWriteFile(workbook, "analisis_eolico_mejorado.csv");
   };
 
   // Exportar a PDF (con secciones múltiples)
@@ -762,7 +846,7 @@ const AnalysisPage = ({ onBackToHome }) => {
     if (!analysisData?.analysis) return;
 
     const doc = new jsPDF();
-    const title = "Informe de Análisis Eólico - Caribe";
+    const title = "Informe de Análisis Eólico Mejorado - Caribe";
     const date = new Date().toLocaleDateString();
 
     // Título del documento
@@ -783,12 +867,15 @@ const AnalysisPage = ({ onBackToHome }) => {
     doc.text(areaText, 14, startY);
     startY += 6;
 
-    const viabilityText = viability?.recommendation || "No disponible";
-    doc.text(`Viabilidad: ${viabilityText}`, 14, startY);
+    // Viabilidad consolidada
+    const consolidatedViabilityText = enhancedViability.consolidated_viability || viability.level || "No disponible";
+    doc.text(`Viabilidad Consolidada: ${consolidatedViabilityText}`, 14, startY);
     startY += 10;
 
     // Secciones que se exportarán
     const sections = [
+      { key: "statistical_diagnosis", title: "Diagnóstico Estadístico" },
+      { key: "climate_diagnosis", title: "Diagnóstico Climatológico" },
       { key: "basic_statistics", title: "Estadísticas Básicas" },
       { key: "capacity_factor", title: "Factor de Capacidad" },
       { key: "power_density", title: "Densidad de Potencia" },
@@ -828,7 +915,7 @@ const AnalysisPage = ({ onBackToHome }) => {
     });
 
     // Guardar PDF
-    doc.save("informe_analisis_eolico.pdf");
+    doc.save("informe_analisis_eolico_mejorado.pdf");
   };
 
   const getColor = (index) => {
@@ -858,12 +945,12 @@ const AnalysisPage = ({ onBackToHome }) => {
                   Análisis Eólico Caribe
                 </h1>
                 <p className="text-sm text-gray-600">
-                  Evaluación del potencial eólico en Colombia
+                  Evaluación del potencial eólico con IA mejorada
                 </p>
               </div>
             </div>
             <Badge variant="outline" className="text-blue-600">
-              Powered by ERA5
+              Powered by ERA5 + AI
             </Badge>
           </div>
         </div>
@@ -888,10 +975,6 @@ const AnalysisPage = ({ onBackToHome }) => {
           </TabsList>
 
           {/* Tab: Mapa */}
-<Tabs defaultValue="map" className="w-full">
-  <TabsList>
-    <TabsTrigger value="map">Mapa</TabsTrigger>
-  </TabsList>
           <TabsContent value="map" className="space-y-6">
             <Card>
               <CardHeader className="flex items-center justify-between">
@@ -1033,7 +1116,6 @@ const AnalysisPage = ({ onBackToHome }) => {
               </CardContent>
             </Card>
           </TabsContent>
-	</Tabs>
 
           {/* Tab: Configuración */}
           <TabsContent value="analysis" className="space-y-6">
@@ -1097,7 +1179,15 @@ const AnalysisPage = ({ onBackToHome }) => {
                       <input type="checkbox" id="temperature" defaultChecked />
                       <Label htmlFor="temperature">Temperatura</Label>
                     </div>
-                    
+                    <div className="flex items-center space-x-2">
+                      <input type="checkbox" id="climate_analysis" defaultChecked />
+                      <Label htmlFor="climate_analysis">Análisis Climatológico</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input type="checkbox" id="ai_diagnosis" defaultChecked />
+                      <Label htmlFor="ai_diagnosis">Diagnóstico con IA</Label>
+                    </div>
+
                     {/* Selector de unidades con espaciado separado y orden visual claro */}
                     <div className="pt-4">
                       <Label htmlFor="windUnit" className="block mb-1 text-sm font-medium text-gray-700">
@@ -1136,7 +1226,7 @@ const AnalysisPage = ({ onBackToHome }) => {
                   className="w-full" 
                   disabled={loading || !selectedArea || dateValidationError}
                 >
-                  {loading ? 'Analizando...' : 'Iniciar Análisis Eólico'}
+                  {loading ? 'Analizando...' : 'Iniciar Análisis Eólico Mejorado'}
                 </Button>
               </CardContent>
             </Card>
@@ -1147,12 +1237,12 @@ const AnalysisPage = ({ onBackToHome }) => {
             {analysisData && Object.keys(analysisData.analysis).length > 0 ? (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
-                {/* Resumen del Análisis */}
-                <Card>
+                {/* Resumen del Análisis Mejorado */}
+                <Card className="lg:col-span-2">
                   <CardHeader>
                     <CardTitle className="flex items-center space-x-2 text-xl font-semibold">
                       <TrendingUp className="h-5 w-5" />
-                      <span>Resumen del Análisis</span>
+                      <span>Diagnóstico Integral de Viabilidad Eólica</span>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4 text-base">
@@ -1165,22 +1255,52 @@ const AnalysisPage = ({ onBackToHome }) => {
                     <p><strong>Fecha de Inicio:</strong> {dateRange?.startDate || "N/A"}</p>
                     <p><strong>Fecha de Fin:</strong> {dateRange?.endDate || "N/A"}</p>
 
-                    <div className={`p-4 rounded-md ${getViabilityColor(viability.level)} text-white shadow-sm`}>
+                    {/* Viabilidad Consolidada */}
+                    <div className={`p-4 rounded-md ${getViabilityColor(enhancedViability.consolidated_viability || viability.level)} text-white shadow-sm`}>
                       <div className="flex items-center space-x-3 mb-1">
-                        <span className="text-3xl">{getViabilityIcon(viability.message)}</span>
-                        <span className="text-xl font-bold">{viability.message}</span>
+                        <span className="text-3xl">🎯</span>
+                        <span className="text-xl font-bold">Viabilidad Consolidada: {enhancedViability.consolidated_viability || viability.level}</span>
                       </div>
                       <div className="text-base">
-                        <strong>Nivel:</strong> {viability.level} &nbsp;|&nbsp;
-                        <strong>Puntuación:</strong> {viability.score}
+                        <strong>Recomendaciones Integradas:</strong>
                       </div>
-                      {viability.recommendations.length > 0 && (
-                        <ul className="list-disc pl-6 mt-2 text-sm leading-relaxed">
-                          {viability.recommendations.map((rec, i) => (
-                            <li key={i}>{rec}</li>
-                          ))}
-                        </ul>
-                      )}
+                      <p className="text-sm leading-relaxed mt-2">
+                        {enhancedViability.combined_recommendations || viability.recommendations.join('. ')}
+                      </p>
+                    </div>
+
+                    {/* Diagnósticos Individuales */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                      {/* Diagnóstico Estadístico */}
+                      <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <BarChart3 className="h-5 w-5 text-blue-600" />
+                          <h4 className="font-semibold text-blue-800">Diagnóstico Estadístico</h4>
+                        </div>
+                        <p className="text-sm text-blue-700">
+                          <strong>Clasificación:</strong> {enhancedViability.statistical_diagnosis.viability_classification}
+                        </p>
+                        <p className="text-sm text-blue-700">
+                          <strong>Vel. Promedio:</strong> {enhancedViability.statistical_diagnosis.wind_speed_avg.toFixed(2)} m/s
+                        </p>
+                        <p className="text-sm text-blue-700">
+                          <strong>Densidad de Potencia:</strong> {enhancedViability.statistical_diagnosis.power_density.toFixed(0)} W/m²
+                        </p>
+                      </div>
+
+                      {/* Diagnóstico Climatológico */}
+                      <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <CloudSnow className="h-5 w-5 text-green-600" />
+                          <h4 className="font-semibold text-green-800">Diagnóstico Climatológico</h4>
+                        </div>
+                        <p className="text-sm text-green-700">
+                          <strong>Impacto Predicho:</strong> {enhancedViability.climate_diagnosis.predicted_impact}
+                        </p>
+                        <p className="text-sm text-green-700 mt-1">
+                          {enhancedViability.climate_diagnosis.recommendation}
+                        </p>
+                      </div>
                     </div>
 
                     <p className="text-base text-gray-700">
@@ -1209,6 +1329,35 @@ const AnalysisPage = ({ onBackToHome }) => {
                     <p><strong>Factor de Capacidad (100m):</strong> {formatPercentage(extractStatistics(analysisData.analysis, windUnit).capacity_factor_100m)}</p>
                     <p><strong>Intensidad de Turbulencia (10m):</strong> {formatPercentage(extractStatistics(analysisData.analysis, windUnit).turbulence_intensity_10m)}</p>
                     <p><strong>Intensidad de Turbulencia (100m):</strong> {formatPercentage(extractStatistics(analysisData.analysis, windUnit).turbulence_intensity_100m)}</p>
+                  </CardContent>
+                </Card>
+
+                {/* Explicaciones Detalladas */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Zap className="h-5 w-5" />
+                      <span>Explicaciones del Sistema IA</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {enhancedViability.detailed_explanations.climate_analysis_module && (
+                      <div className="p-3 bg-blue-50 rounded-lg">
+                        <h5 className="font-semibold text-blue-800 mb-2">Módulo de Análisis Climatológico</h5>
+                        <p className="text-sm text-blue-700">
+                          {enhancedViability.detailed_explanations.climate_analysis_module.description || 'Análisis basado en registros históricos de eventos meteorológicos extremos.'}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {enhancedViability.detailed_explanations.statistical_diagnosis && (
+                      <div className="p-3 bg-green-50 rounded-lg">
+                        <h5 className="font-semibold text-green-800 mb-2">Diagnóstico Estadístico</h5>
+                        <p className="text-sm text-green-700">
+                          {enhancedViability.detailed_explanations.statistical_diagnosis.description || 'Evaluación basada en métricas estadísticas del recurso eólico.'}
+                        </p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -1335,10 +1484,10 @@ const AnalysisPage = ({ onBackToHome }) => {
                   {loading ? (
                     <div className="flex items-center justify-center space-x-2">
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                      <p>Cargando resultados del análisis...</p>
+                      <p>Cargando resultados del análisis mejorado...</p>
                     </div>
                   ) : (
-                    <p>Selecciona un área en el mapa y haz clic en "Iniciar Análisis Eólico" para ver los resultados.</p>
+                    <p>Selecciona un área en el mapa y haz clic en "Iniciar Análisis Eólico Mejorado" para ver los resultados.</p>
                   )}
                 </CardContent>
               </Card>
