@@ -295,7 +295,7 @@ def get_era5_data():
                 era5_data[key] = [] if key != "metadata" else {}
                 logger.warning(f"Clave \'{key}\' no encontrada en era5_data, inicializada como vacía.")
 
-        logger.info(f"Enviando {len(era5_data.get(\'timestamps\',[]))} timestamps al frontend.")
+        logger.info(f"Enviando {len(era5_data.get('timestamps',[]))} timestamps al frontend.")
         return jsonify(era5_data)
 
     except ValueError as ve:
