@@ -8,14 +8,10 @@ class ClimateAnalysisModule:
     Módulo de análisis climatológico para evaluar la viabilidad de proyectos eólicos
     considerando eventos climáticos extremos en el Caribe colombiano.
     """
-    
+
     def __init__(self, hurdat_data_path=None, model_path=None):
         """
         Inicializa el módulo de análisis climatológico.
-        
-        Args:
-            hurdat_data_path (str): Ruta al archivo CSV con datos de huracanes parseados
-            model_path (str): Ruta al modelo de machine learning entrenado
         """
         base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'database'))
         self.hurdat_data_path = hurdat_data_path or os.path.join(base_dir, 'parsed_hurdat_data.csv')
@@ -28,39 +24,40 @@ class ClimateAnalysisModule:
             "min_lon": -82.0,
             "max_lon": -74.0
         }
-        
+
     def load_data(self):
         """Carga los datos de huracanes y el modelo entrenado."""
         try:
-            self.df = pd.read_csv(self.hurdat_data_path, dtype={
-                "date": str,
-                "time": str
-            })
+            print("📂 Verificando existencia de archivos...")
+            print(f"🧪 CSV path: {self.hurdat_data_path} | Existe: {os.path.exists(self.hurdat_data_path)}")
+            print(f"🧪 Model path: {self.model_path} | Existe: {os.path.exists(self.model_path)}")
+
+            self.df = pd.read_csv(self.hurdat_data_path, dtype={"date": str, "time": str})
             self.model = joblib.load(self.model_path)
+
+            print("✅ Datos y modelo cargados correctamente.")
             return True
         except Exception as e:
-            print(f"Error cargando datos o modelo: {e}")
+            print(f"❌ Error cargando datos o modelo: {e}")
             return False
-    
+
     def calculate_metrics(self, analysis_point_lat, analysis_point_lon, radius_km=200):
-        """
-        Calcula métricas estadísticas y geoespaciales para un punto de análisis.
-        """
+        """Calcula métricas estadísticas y geoespaciales para un punto de análisis."""
         if self.df is None:
             raise ValueError("Los datos no han sido cargados. Llama a load_data() primero.")
-        
+
         caribbean_events = self.df[
-            (self.df["latitude_float"] >= self.caribbean_bbox["min_lat"])
-            & (self.df["latitude_float"] <= self.caribbean_bbox["max_lat"])
-            & (self.df["longitude_float"] >= self.caribbean_bbox["min_lon"])
-            & (self.df["longitude_float"] <= self.caribbean_bbox["max_lon"])
+            (self.df["latitude_float"] >= self.caribbean_bbox["min_lat"]) &
+            (self.df["latitude_float"] <= self.caribbean_bbox["max_lat"]) &
+            (self.df["longitude_float"] >= self.caribbean_bbox["min_lon"]) &
+            (self.df["longitude_float"] <= self.caribbean_bbox["max_lon"])
         ].copy()
 
         if caribbean_events.empty:
             return self._empty_metrics()
 
         caribbean_events["distance_to_analysis_point"] = caribbean_events.apply(
-            lambda row: geodesic((row["latitude_float"], row["longitude_float"]), 
+            lambda row: geodesic((row["latitude_float"], row["longitude_float"]),
                                  (analysis_point_lat, analysis_point_lon)).km,
             axis=1
         )
@@ -72,7 +69,7 @@ class ClimateAnalysisModule:
 
         event_density = nearby_events["storm_id"].nunique()
 
-        nearby_events["year"] = pd.to_datetime(nearby_events["date"] + nearby_events["time"], 
+        nearby_events["year"] = pd.to_datetime(nearby_events["date"] + nearby_events["time"],
                                                format="%Y%m%d%H%M").dt.year
         total_years = nearby_events["year"].nunique()
         event_frequency = nearby_events.groupby("storm_type")["storm_id"].nunique() / total_years if total_years > 0 else 0
@@ -81,10 +78,10 @@ class ClimateAnalysisModule:
         event_intensity_profile = nearby_events.groupby("storm_type")["max_sustained_wind_knots"].mean().to_dict()
 
         nearby_events["max_sustained_wind_ms"] = nearby_events["max_sustained_wind_knots"] * 0.514444
-        
+
         useful_wind_events = nearby_events[
-            (nearby_events["max_sustained_wind_ms"] >= 12)
-            & (nearby_events["max_sustained_wind_ms"] <= 25)
+            (nearby_events["max_sustained_wind_ms"] >= 12) &
+            (nearby_events["max_sustained_wind_ms"] <= 25)
         ]
         energy_opportunity_score = useful_wind_events["storm_id"].nunique() / event_density if event_density > 0 else 0
 
@@ -114,7 +111,7 @@ class ClimateAnalysisModule:
             "event_duration_stats": event_duration_stats,
             "historical_pressure_min": historical_pressure_min
         }
-    
+
     def _empty_metrics(self):
         return {
             "event_density": 0,
@@ -125,15 +122,15 @@ class ClimateAnalysisModule:
             "event_duration_stats": {"average_duration_hours": 0, "std_dev_duration_hours": 0},
             "historical_pressure_min": -999
         }
-    
+
     def predict_impact(self, metrics):
         if self.model is None:
             raise ValueError("El modelo no ha sido cargado. Llama a load_data() primero.")
-        
+
         avg_wind_speed_hu = metrics["event_intensity_profile"].get("HU", 0)
         avg_wind_speed_ts = metrics["event_intensity_profile"].get("TS", 0)
         avg_duration_hours = metrics["event_duration_stats"]["average_duration_hours"]
-        
+
         input_data = {
             'event_density': metrics["event_density"],
             'avg_wind_speed_hu': avg_wind_speed_hu,
@@ -143,12 +140,12 @@ class ClimateAnalysisModule:
             'avg_duration_hours': avg_duration_hours,
             'min_pressure': metrics["historical_pressure_min"]
         }
-        
+
         input_df = pd.DataFrame([input_data])
         predicted_impact = self.model.predict(input_df)[0]
-        
+
         return predicted_impact
-    
+
     def generate_recommendation(self, predicted_impact):
         recommendations = {
             'positivo': (
@@ -165,16 +162,16 @@ class ClimateAnalysisModule:
             )
         }
         return recommendations.get(predicted_impact, "No se pudo generar una recomendación debido a un impacto no reconocido.")
-    
+
     def analyze_point(self, latitude, longitude, radius_km=200):
         if not self.load_data():
             return {"error": "No se pudieron cargar los datos o el modelo"}
-        
+
         try:
             metrics = self.calculate_metrics(latitude, longitude, radius_km)
             predicted_impact = self.predict_impact(metrics)
             recommendation = self.generate_recommendation(predicted_impact)
-            
+
             return {
                 "latitude": latitude,
                 "longitude": longitude,
@@ -194,7 +191,7 @@ class ClimateAnalysisModule:
 if __name__ == "__main__":
     climate_module = ClimateAnalysisModule()
     result = climate_module.analyze_point(10.9685, -74.7813)
-    
+
     if result.get("success"):
         print(f"✅ Análisis para punto ({result['latitude']}, {result['longitude']}):")
         print(f"Impacto predicho: {result['predicted_impact']}")
