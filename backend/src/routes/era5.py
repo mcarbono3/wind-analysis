@@ -502,7 +502,7 @@ def test_connection():
         logger.error(f"❌ Error en test de conexión: {e}")
         return jsonify({
             "status": "error",
-            "message": f"Error interno: {e}"
+            "message": f"Error al procesar datos ERA5: {str(e)}"
         }), 500
 
 @era5_bp.route('/credentials-info', methods=['GET'])
