@@ -204,6 +204,8 @@ class ERA5Service:
 
         wind_speed_10m = []
         wind_speed_100m = []
+        wind_direction_10m = []
+        wind_direction_100m = []
         surface_pressure = []
         temperature_2m = []
 
@@ -219,9 +221,11 @@ class ERA5Service:
 
             wind_10 = base_wind_10 * time_factor * random_factor * seasonal_factor
             wind_speed_10m.append(round(max(1.0, min(12.0, wind_10)), 2))
-
             wind_100 = wind_10 * 1.27
             wind_speed_100m.append(round(max(1.5, min(15.0, wind_100)), 2))
+
+            wind_direction_10m.append(round(random.uniform(0, 360), 1))
+            wind_direction_100m.append(round(random.uniform(0, 360), 1))
 
             pressure_var = 5 * np.sin(2 * np.pi * ((i // spatial_points) % 4) / 4) + 3 * (random.random() - 0.5)
             pressure = base_pressure + pressure_var
@@ -234,13 +238,34 @@ class ERA5Service:
         replicated_timestamps = []
         for ts in timestamps:
             replicated_timestamps.extend([ts] * spatial_points)
+        # 🧠 Análisis adicionales esperados por el frontend
+        sim_df = pd.DataFrame({
+            "timestamp": pd.to_datetime(replicated_timestamps),
+            "speed": wind_speed_10m,
+            "direction": wind_direction_10m
+            })
+        bins = np.arange(0, 361, 30)
+        labels = [f"{i}-{i+30}" for i in bins[:-1]]
+        sim_df["dir_bin"] = pd.cut(sim_df["direction"], bins=bins, labels=labels, right=False)
+        wind_rose_data = sim_df.groupby("dir_bin")["speed"].count().reindex(labels, fill_value=0).to_dict()
+
+        sim_df["hour"] = sim_df["timestamp"].dt.hour
+        hourly_patterns = sim_df.groupby("hour")["speed"].mean().round(2).to_dict()
+
+        sim_df["date"] = sim_df["timestamp"].dt.date
+        time_series = sim_df.groupby("date")["speed"].mean().round(2).to_dict()
 
         simulated_data = {
             'wind_speed_10m': wind_speed_10m,
             'wind_speed_100m': wind_speed_100m,
+            'wind_direction_10m': wind_direction_10m,
+            'wind_direction_100m': wind_direction_100m,
             'surface_pressure': surface_pressure,
             'temperature_2m': temperature_2m,
             'timestamps': replicated_timestamps,
+            'wind_rose_data': wind_rose_data,
+            'hourly_patterns': hourly_patterns,
+            'time_series': time_series,
             'metadata': {
                 'total_points': flat_total_points,
                 'spatial_resolution': f'{spatial_points} puntos simulados',
