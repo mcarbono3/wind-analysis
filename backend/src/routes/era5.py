@@ -454,7 +454,10 @@ def get_wind_data():
         )
         
         logger.info("✅ Respuesta enviada exitosamente")
-        return jsonify(result)
+        return jsonify({
+            "status": "success",
+            "data": result
+            }), 200
         
     except ValueError as e:
         logger.error(f"❌ Error de validación: {e}")
