@@ -145,36 +145,14 @@ class ClimateAnalysisModule:
     def generate_recommendation(self, predicted_impact):
         recommendations = {
             'positivo': (
-                "**Recomendación: Viabilidad Alta**
-
-"
-                "Este punto geográfico presenta condiciones históricas favorables para proyectos eólicos, "
-                "con una alta puntuación de oportunidad energética y un bajo índice de riesgo extremo. "
-                "Se recomienda proceder con estudios de viabilidad detallados y considerar este sitio como "
-                "prioritario para el desarrollo de energía eólica. "
-                "Monitorear continuamente las condiciones climáticas y realizar análisis de sitio exhaustivos "
-                "para optimizar el diseño del proyecto y la selección de turbinas."
-            ),
+        '**Recomendación: Viabilidad Alta**\n\nEste punto geográfico presenta condiciones históricas favorables para proyectos eólicos, \ncon una alta puntuación de oportunidad energética y un bajo índice de riesgo extremo. \nSe recomienda proceder con estudios de viabilidad detallados y considerar este sitio como \nprioritario para el desarrollo de energía eólica. \nMonitorear continuamente las condiciones climáticas y realizar análisis de sitio exhaustivos \npara optimizar el diseño del proyecto y la selección de turbinas.'
+        ),
             'neutral': (
-                "**Recomendación: Viabilidad Moderada**
-
-"
-                "La viabilidad para proyectos eólicos en esta ubicación es moderada. "
-                "Aunque existen oportunidades energéticas, también se han registrado eventos extremos que "
-                "podrían impactar la operación. Se sugiere realizar un análisis de riesgo más profundo, "
-                "considerar tecnologías de turbinas más robustas y diseñar estrategias de mitigación "
-                "para eventos climáticos. La diversificación de la cartera de proyectos podría ser beneficiosa."
-            ),
+        '**Recomendación: Viabilidad Moderada**\n\nLa viabilidad para proyectos eólicos en esta ubicación es moderada. \nAunque existen oportunidades energéticas, también se han registrado eventos extremos que \npodrían impactar la operación. Se sugiere realizar un análisis de riesgo más profundo, \nconsiderar tecnologías de turbinas más robustas y diseñar estrategias de mitigación \npara eventos climáticos. La diversificación de la cartera de proyectos podría ser beneficiosa.'
+        ),
             'negativo': (
-                "**Recomendación: Viabilidad Baja / Riesgo Alto**
-
-"
-                "Este sitio presenta un alto riesgo debido a la frecuencia e intensidad de eventos climáticos extremos, "
-                "lo que reduce significativamente la oportunidad energética. "
-                "No se recomienda la inversión en proyectos eólicos a gran escala en esta ubicación "
-                "sin una reevaluación exhaustiva de los riesgos y la implementación de medidas de protección "
-                "excepcionalmente robustas. Se aconseja explorar ubicaciones alternativas con un perfil de riesgo más favorable."
-            )
+        '**Recomendación: Viabilidad Baja / Riesgo Alto**\n\nEste sitio presenta un alto riesgo debido a la frecuencia e intensidad de eventos climáticos extremos, \nlo que reduce significativamente la oportunidad energética. \nNo se recomienda la inversión en proyectos eólicos a gran escala en esta ubicación \nsin una reevaluación exhaustiva de los riesgos y la implementación de medidas de protección \nexcepcionalmente robustas. Se aconseja explorar ubicaciones alternativas con un perfil de riesgo más favorable.'
+        )
         }
         return recommendations.get(predicted_impact, "No se pudo generar una recomendación debido a un impacto no reconocido.")
 
@@ -202,4 +180,3 @@ class ClimateAnalysisModule:
             }
         except Exception as e:
             return {"error": f"Error durante el análisis: {str(e)}", "success": False}
-
