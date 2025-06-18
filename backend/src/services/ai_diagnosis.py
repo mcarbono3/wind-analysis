@@ -365,4 +365,3 @@ def create_wind_ai_model():
         print(f"   {feature}: {imp:.3f}")
     
     return ai_model
-
