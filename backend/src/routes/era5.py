@@ -253,7 +253,8 @@ class ERA5Service:
         hourly_patterns = sim_df.groupby("hour")["speed"].mean().round(2).to_dict()
 
         sim_df["date"] = sim_df["timestamp"].dt.date
-        time_series = sim_df.groupby("date")["speed"].mean().round(2).to_dict()
+        daily_avg = sim_df.groupby("date")["speed"].mean().round(2)
+        time_series = {date.isoformat(): val for date, val in daily_avg.items()}
 
         simulated_data = {
             'wind_speed_10m': wind_speed_10m,
