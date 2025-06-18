@@ -10,7 +10,7 @@ from climate_analysis_module import ClimateAnalysisModule
 ai_bp = Blueprint('ai', __name__)
 
 # Rutas a los archivos de datos y modelo
-PROJECT_ROOT = os.path.abspath(os.path.dirname(__file__))  # Apunta directamente a backend/src
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 DATABASE_PATH = os.path.join(PROJECT_ROOT, 'database')
 
 HURDAT_DATA_PATH = os.path.join(DATABASE_PATH, 'parsed_hurdat_data.csv')
