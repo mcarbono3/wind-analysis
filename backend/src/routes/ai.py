@@ -126,6 +126,13 @@ def ai_diagnosis():
                 "predicted_impact": climate_analysis_result["predicted_impact"],
                 "recommendation": climate_analysis_result["recommendation"]
             },
+            "ai_diagnosis": {
+                "classification": climate_analysis_result["predicted_impact"],
+                "confidence": 0.0,
+                "key_factors": [],
+                "recommendations": "",
+                "class_probabilities": {}
+                },
             "consolidated_viability": consolidated_viability,
             "combined_recommendations": combined_recommendations,
             "detailed_explanations": detailed_explanations
