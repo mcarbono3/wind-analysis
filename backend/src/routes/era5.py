@@ -277,18 +277,6 @@ class ERA5Service:
         logger.info("Datos simulados generados.")
         return simulated_data
 
-def generate_frontend_compatible_data(self, lat_min, lat_max, lon_min, lon_max, start_date, end_date):
-    """
-    Decide si se generan datos reales o simulados, según el modo de prueba.
-    Es el punto de entrada unificado para el endpoint /wind-data.
-    """
-    if self.test_mode:
-        logger.info("🔧 Modo de prueba activo: Generando datos simulados")
-        return self.generate_simulated_data_for_frontend(lat_min, lat_max, lon_min, lon_max, start_date, end_date)
-    else:
-        logger.info("🌍 Modo real: Intentando obtener datos reales ERA5")
-        return self.get_real_wind_data(lat_min, lat_max, lon_min, lon_max, start_date, end_date)
-
 @era5_bp.route('/wind-data', methods=['POST'])
 def get_wind_data():
     """
