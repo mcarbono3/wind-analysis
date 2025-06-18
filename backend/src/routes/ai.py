@@ -2,6 +2,22 @@ from flask import Blueprint, request, jsonify
 from flask_cors import cross_origin
 import os
 import sys
+import numpy as np
+
+def convert_numpy(obj):
+    """
+    Convierte objetos numpy.* a tipos nativos de Python para evitar errores de serialización.
+    """
+    if isinstance(obj, dict):
+        return {k: convert_numpy(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_numpy(elem) for elem in obj]
+    elif isinstance(obj, (np.integer, np.int64)):
+        return int(obj)
+    elif isinstance(obj, (np.floating, np.float64)):
+        return float(obj)
+    else:
+        return obj
 
 # Importar el módulo de análisis climatológico
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'services'))
@@ -111,7 +127,7 @@ def ai_diagnosis():
             "detailed_explanations": detailed_explanations
         }
 
-        return jsonify(unified_result), 200
+        return jsonify(convert_numpy(unified_result)), 200
 
     except Exception as e:
         return jsonify({"success": False, "error": f"Error interno del servidor: {str(e)}"}), 500
