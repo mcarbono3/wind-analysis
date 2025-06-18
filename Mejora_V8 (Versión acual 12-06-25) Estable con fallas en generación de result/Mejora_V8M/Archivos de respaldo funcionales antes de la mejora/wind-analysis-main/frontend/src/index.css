@@ -1,4 +1,0 @@
-/* Permitir selección táctil de área en Leaflet en móviles */
-.leaflet-container {
-  touch-action: none !important;
-}
