@@ -168,12 +168,10 @@ class ERA5Service:
                 'generated_at': datetime.now().isoformat(),
                 'version': 'era5-v1.0'
             }
-            
             # Limpiar el archivo temporal
-try:
-    os.remove(dataset_path)
-except OSError as e:
-    logger.warning(f"No se pudo eliminar el archivo temporal: {e}")
+            os.remove(dataset_path)  
+                       
+        logger.warning(f"No se pudo eliminar el archivo temporal: {e}")
 
         except Exception as e:
             logger.error(f"Fallo la descarga o procesamiento de datos reales: {e}")
