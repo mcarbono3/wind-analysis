@@ -107,17 +107,25 @@ class ERA5Service:
 
             if "u10" in ds and "v10" in ds:
                 wind_speed_10m = np.sqrt(ds["u10"]**2 + ds["v10"]**2)
+                wind_direction_10m = (180 / np.pi) * np.arctan2(ds["u10"], ds["v10"])
+                wind_direction_10m = (wind_direction_10m + 360) % 360
                 data_for_frontend['wind_speed_10m'] = wind_speed_10m.values.flatten().tolist()
+                data_for_frontend['wind_direction_10m'] = wind_direction_10m.values.flatten().tolist()
             else:
                 logger.warning("Variables u10 o v10 no encontradas.")
                 data_for_frontend['wind_speed_10m'] = []
+                data_for_frontend['wind_direction_10m'] = []
 
             if "u100" in ds and "v100" in ds:
                 wind_speed_100m = np.sqrt(ds["u100"]**2 + ds["v100"]**2)
+                wind_direction_100m = (180 / np.pi) * np.arctan2(ds["u100"], ds["v100"])
+                wind_direction_100m = (wind_direction_100m + 360) % 360
                 data_for_frontend['wind_speed_100m'] = wind_speed_100m.values.flatten().tolist()
+                data_for_frontend['wind_direction_100m'] = wind_direction_100m.values.flatten().tolist()
             else:
                 logger.warning("Variables u100 o v100 no encontradas.")
                 data_for_frontend['wind_speed_100m'] = []
+                data_for_frontend['wind_direction_100m'] = []
 
             if "t2m" in ds:
                 temperature_2m_celsius = ds["t2m"] - 273.15 
@@ -132,6 +140,23 @@ class ERA5Service:
             else:
                 logger.warning("Variable sp no encontrada.")
                 data_for_frontend['surface_pressure'] = []
+            
+            wind_df = pd.DataFrame({
+                "timestamp": pd.to_datetime(timestamps),
+                "speed": data_for_frontend["wind_speed_10m"],
+                "direction": data_for_frontend["wind_direction_10m"]
+                })
+            bins = np.arange(0, 361, 30)
+            labels = [f"{i}-{i+30}" for i in bins[:-1]]
+            wind_df["dir_bin"] = pd.cut(wind_df["direction"], bins=bins, labels=labels, right=False)
+            data_for_frontend["wind_rose_data"] = wind_df.groupby("dir_bin")["speed"].count().reindex(labels, fill_value=0).to_dict()
+
+            wind_df["hour"] = wind_df["timestamp"].dt.hour
+            data_for_frontend["hourly_patterns"] = wind_df.groupby("hour")["speed"].mean().round(2).to_dict()
+
+            wind_df["date"] = wind_df["timestamp"].dt.date
+            daily_avg = wind_df.groupby("date")["speed"].mean().round(2)
+            data_for_frontend["time_series"] = {date.isoformat(): val for date, val in daily_avg.items()}
 
             data_for_frontend['metadata'] = {
                 'total_points': len(timestamps) * ds.latitude.size * ds.longitude.size,
