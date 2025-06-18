@@ -18,6 +18,7 @@ class ERA5Service:
     def __init__(self):
         self.test_mode = os.environ.get("TEST_MODE", "False").lower() == "true"
         logger.info(f"ERA5Service inicializado (test_mode={self.test_mode})")
+
     def safe_get(self, lst, index, default=None):
         """Acceso seguro a listas para evitar IndexError"""
         try:
@@ -31,10 +32,8 @@ class ERA5Service:
         """Validar parámetros de entrada"""
         required_params = ['lat_min', 'lat_max', 'lon_min', 'lon_max', 'start_date', 'end_date']
         missing_params = [param for param in required_params if param not in data]
-        
         if missing_params:
             raise ValueError(f'Parámetros faltantes: {missing_params}')
-        
         try:
             lat_min = float(data['lat_min'])
             lat_max = float(data['lat_max'])
@@ -42,30 +41,27 @@ class ERA5Service:
             lon_max = float(data['lon_max'])
             start_date = data['start_date']
             end_date = data['end_date']
-            
+
             # Validaciones de rango
             if lat_min >= lat_max or lon_min >= lon_max:
                 raise ValueError('Rangos geográficos inválidos')
-            
+
             # Validar fechas
             start_dt = datetime.strptime(start_date, '%Y-%m-%d')
             end_dt = datetime.strptime(end_date, '%Y-%m-%d')
-            
             if start_dt > end_dt:
                 raise ValueError('Fecha de inicio debe ser anterior a fecha final')
-            
+
             # Límite de seguridad
             if (end_dt - start_dt).days > 31:
                 raise ValueError('Rango de fechas muy amplio (máximo 31 días)')
-            
             return lat_min, lat_max, lon_min, lon_max, start_date, end_date
-            
         except ValueError as e:
             if 'does not match format' in str(e):
                 raise ValueError('Formato de fecha inválido. Use YYYY-MM-DD')
             raise
 
-    def get_real_wind_data(self):
+    def get_real_wind_data(self, lat_min, lat_max, lon_min, lon_max, start_date, end_date):
         try:
             cds_url = os.environ.get("CDSAPI_URL")
             cds_key = os.environ.get("CDSAPI_KEY")
@@ -73,382 +69,282 @@ class ERA5Service:
                 raise ValueError("Credenciales de CDS no configuradas")
 
             c = cdsapi.Client(url=cds_url, key=cds_key)
-            area = [13.0, -77.0, 7.0, -71.0]
-            year = "2023"
-            months = [f"{i:02d}" for i in range(1, 13)]
-            days = [f"{i:02d}" for i in range(1, 29)]
-
-            with tempfile.NamedTemporaryFile(suffix=".nc", delete=False) as fu,                  tempfile.NamedTemporaryFile(suffix=".nc", delete=False) as fv:
-                u_path, v_path = fu.name, fv.name
-
-            c.retrieve("reanalysis-era5-single-levels", {
-                "product_type": "reanalysis",
-                "variable": "10m_u_component_of_wind",
-                "year": year,
-                "month": months,
-                "day": days,
-                "time": ["00:00"],
-                "format": "netcdf",
-                "area": area
-            }, u_path)
-
-            c.retrieve("reanalysis-era5-single-levels", {
-                "product_type": "reanalysis",
-                "variable": "10m_v_component_of_wind",
-                "year": year,
-                "month": months,
-                "day": days,
-                "time": ["00:00"],
-                "format": "netcdf",
-                "area": area
-            }, v_path)
-
-            ds_u = xr.open_dataset(u_path)
-            ds_v = xr.open_dataset(v_path)
-            wind = np.sqrt(ds_u["u10"]**2 + ds_v["v10"]**2).mean(dim="time")
-
-            data = []
-            for lat in wind.latitude.values:
-                for lon in wind.longitude.values:
-                    val = wind.sel(latitude=lat, longitude=lon, method="nearest").item()
-                    if not np.isnan(val):
-                        data.append([float(lat), float(lon), float(val)])
-            return data
-        except Exception as e:
-            logger.error(f"Fallo la descarga de datos reales: {e}")
-            return self.get_simulated_wind_data()
-
-    def get_simulated_wind_data(self):
-        lats = np.linspace(7.0, 13.0, 20)
-        lons = np.linspace(-77.0, -71.0, 25)
-        return [[float(lat), float(lon), round(random.uniform(3, 11), 2)] for lat in lats for lon in lons]
-
-    def generate_frontend_compatible_data(self, lat_min, lat_max, lon_min, lon_max, start_date, end_date):
-        """
-        Genera datos en el formato EXACTO que espera el frontend
-        
-        Frontend espera:
-        era5Data.wind_speed_10m.flat() - donde wind_speed_10m es un array directo
-        """
-        try:
-            logger.info("🔄 Generando datos compatibles con frontend")
+            area = [lat_max, lon_min, lat_min, lon_max]  # North, West, South, East
             
-            # Calcular dimensiones
-            start = datetime.strptime(start_date, '%Y-%m-%d')
-            end = datetime.strptime(end_date, '%Y-%m-%d')
-            days = (end - start).days + 1
-            if 'spatial_points' not in locals():spatial_points = 5
-            # Puntos temporales (cada 6 horas como ERA5)
-            temporal_points = days * 4  # 4 mediciones por día
-            total_points = spatial_points * temporal_points
-
-            # Generar timestamps
-            timestamps = []
-            current_dt = start
-            for _ in range(temporal_points):
-                timestamps.append(current_dt.isoformat())
-                current_dt += timedelta(hours=6)
-
-            logger.info(f"📊 Generando {total_points} puntos ({spatial_points} espaciales × {temporal_points} temporales)")
+            # Convertir fechas a formato requerido por CDSAPI (YYYY-MM-DD)
+            start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+            end_dt = datetime.strptime(end_date, '%Y-%m-%d')
             
-            # Generar datos realistas del Caribe
-            wind_speed_10m = []
-            wind_speed_100m = []
-            surface_pressure = []
-            temperature_2m = []
+            dates = [start_dt + timedelta(days=x) for x in range((end_dt - start_dt).days + 1)]
             
-            # Parámetros base para el Caribe
-            base_wind_10 = 6.5    # m/s típico
-            base_wind_100 = 8.2   # m/s típico (25% mayor)
-            base_pressure = 1013  # hPa típico
-            base_temp = 28        # °C típico
+            years = sorted(list(set([d.strftime('%Y') for d in dates])))
+            months = sorted(list(set([d.strftime('%m') for d in dates])))
+            days = sorted(list(set([d.strftime('%d') for d in dates])))
             
-            for i in range(total_points):
-                # Factores de variación
-                time_factor = 0.8 + 0.4 * np.sin(2 * np.pi * (i % 4) / 4)  # Ciclo 6h
-                random_factor = 0.7 + 0.6 * random.random()
-                seasonal_factor = 0.9 + 0.2 * np.sin(2 * np.pi * (i % (365*4)) / (365*4))
-                
-                # Viento a 10m (3-10 m/s típico del Caribe)
-                wind_10 = base_wind_10 * time_factor * random_factor * seasonal_factor
-                wind_speed_10m.append(round(max(1.0, min(12.0, wind_10)), 2))
-                
-                # Viento a 100m (25-30% mayor que 10m)
-                wind_100 = wind_10 * 1.27  # Factor típico de altura
-                wind_speed_100m.append(round(max(1.5, min(15.0, wind_100)), 2))
-                
-                # Presión superficial (1007-1019 hPa)
-                pressure_var = 5 * np.sin(2 * np.pi * (i % 4) / 4) + 3 * (random.random() - 0.5)
-                pressure = base_pressure + pressure_var
-                surface_pressure.append(round(max(1000, min(1025, pressure)), 1))
-                
-                # Temperatura a 2m (23-33°C)
-                temp_var = 4 * np.sin(2 * np.pi * (i % 4) / 4 - np.pi/4) + 2 * (random.random() - 0.5)
-                temp = base_temp + temp_var * seasonal_factor
-                temperature_2m.append(round(max(20, min(35, temp)), 1))
+            variables = [
+                "10m_u_component_of_wind", "10m_v_component_of_wind",
+                "100m_u_component_of_wind", "100m_v_component_of_wind",
+                "2m_temperature", "surface_pressure"
+            ]
 
-            wind_direction_10m = np.random.uniform(0, 360, total_points)
-            wind_direction_100m = np.random.uniform(0, 360, total_points)
-            # FORMATO EXACTO que espera el frontend
-            # El frontend hace: era5Data.wind_speed_10m.flat()
-            # Por lo tanto, wind_speed_10m debe ser un array directo
-            compatible_data = {
-                'wind_speed_10m': wind_speed_10m,        # Array directo ✅
-                'wind_speed_100m': wind_speed_100m,      # Array directo ✅
-                'surface_pressure': surface_pressure,    # Array directo ✅
-                'temperature_2m': temperature_2m,        # Array directo ✅
-                'wind_direction_10m': wind_direction_10m.tolist(),
-                'wind_direction_100m': wind_direction_100m.tolist(),
-                'timestamps': timestamps,
-                'time_series': timestamps,  # puede eliminarse si no lo usas
-                # Metadatos adicionales (no usados por frontend pero útiles)
-                'metadata': {
-                    'total_points': total_points,
-                    'spatial_resolution': f'{spatial_points} puntos',
-                    'temporal_resolution': f'{temporal_points} timesteps',
-                    'area': f'lat:[{lat_min},{lat_max}] lon:[{lon_min},{lon_max}]',
-                    'period': f'{start_date} to {end_date}',
-                    'test_mode': True,
-                    'region': 'Caribe Colombiano',
-                    'generated_at': datetime.now().isoformat(),
-                    'version': '3.0-compatible'
+            # Crear un archivo temporal para los datos descargados
+            with tempfile.NamedTemporaryFile(suffix=".nc", delete=False) as tmp_file:
+                dataset_path = tmp_file.name
+            
+            logger.info(f"Descargando datos para el área: {area}, Años: {years}, Meses: {months}, Días: {days}")
+            
+            c.retrieve(
+                "reanalysis-era5-single-levels",
+                {
+                    "product_type": "reanalysis",
+                    "variable": variables,
+                    "year": years,
+                    "month": months,
+                    "day": days,
+                    "time": ["00:00", "06:00", "12:00", "18:00"], # Obtener datos cada 6 horas
+                    "format": "netcdf",
+                    "area": area
                 },
-                'timestamps': timestamps, # Añadido para el frontend
-                'time_series': [{'time': ts, 'speed': ws} for ts, ws in zip(timestamps, wind_speed_100m)], # Simulación
-                'wind_speed_distribution': [{'speed': i, 'frequency': random.random()} for i in range(10)], # Simulación
-                'wind_rose_data': [{'direction': d, 'frequency': random.random()} for d in ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']], # Simulación
-                'hourly_patterns': {'mean_by_hour': {str(h): random.random() * 10 for h in range(24)}} # Simulación
+                dataset_path
+            )
+
+            ds = xr.open_dataset(dataset_path)
+            logger.info(f"Datos descargados y abiertos: {ds.variables.keys()}")
+
+            # Extraer y procesar los datos
+            data_for_frontend = {}
+            timestamps = [pd.Timestamp(t).isoformat() for t in ds.time.values]
+            data_for_frontend['timestamps'] = timestamps
+
+            # Componentes U y V a 10m
+            if "u10" in ds and "v10" in ds:
+                wind_speed_10m = np.sqrt(ds["u10"]**2 + ds["v10"]**2)
+                data_for_frontend['wind_speed_10m'] = wind_speed_10m.values.flatten().tolist()
+                # La dirección del viento se puede calcular si es necesario, pero no está en la solicitud original
+                # wind_direction_10m = (np.arctan2(ds["u10"], ds["v10"]) * 180 / np.pi + 180) % 360
+                # data_for_frontend['wind_direction_10m'] = wind_direction_10m.values.flatten().tolist()
+            else:
+                logger.warning("Variables u10 o v10 no encontradas en los datos descargados.")
+                data_for_frontend['wind_speed_10m'] = []
+
+            # Componentes U y V a 100m
+            if "u100" in ds and "v100" in ds:
+                wind_speed_100m = np.sqrt(ds["u100"]**2 + ds["v100"]**2)
+                data_for_frontend['wind_speed_100m'] = wind_speed_100m.values.flatten().tolist()
+                # wind_direction_100m = (np.arctan2(ds["u100"], ds["v100"]) * 180 / np.pi + 180) % 360
+                # data_for_frontend['wind_direction_100m'] = wind_direction_100m.values.flatten().tolist()
+            else:
+                logger.warning("Variables u100 o v100 no encontradas en los datos descargados.")
+                data_for_frontend['wind_speed_100m'] = []
+
+            # Temperatura a 2m
+            if "t2m" in ds:
+                # Convertir de Kelvin a Celsius si es necesario (ERA5 suele estar en Kelvin)
+                temperature_2m_celsius = ds["t2m"] - 273.15 
+                data_for_frontend['temperature_2m'] = temperature_2m_celsius.values.flatten().tolist()
+            else:
+                logger.warning("Variable t2m no encontrada en los datos descargados.")
+                data_for_frontend['temperature_2m'] = []
+
+            # Presión superficial
+            if "sp" in ds:
+                 # Convertir de Pascal a hPa si es necesario (ERA5 suele estar en Pa)
+                surface_pressure_hpa = ds["sp"] / 100.0
+                data_for_frontend['surface_pressure'] = surface_pressure_hpa.values.flatten().tolist()
+            else:
+                logger.warning("Variable sp no encontrada en los datos descargados.")
+                data_for_frontend['surface_pressure'] = []
+            
+            # Añadir metadatos como en la función de simulación para consistencia
+            data_for_frontend['metadata'] = {
+                'total_points': len(timestamps) * ds.latitude.size * ds.longitude.size,
+                'spatial_resolution': f'{ds.latitude.size} lat x {ds.longitude.size} lon puntos',
+                'temporal_resolution': f'{len(timestamps)} timesteps',
+                'area': f'lat:[{lat_min},{lat_max}] lon:[{lon_min},{lon_max}]',
+                'period': f'{start_date} to {end_date}',
+                'test_mode': False, # Indicar que son datos reales
+                'region': 'Caribe Colombiano (ERA5)',
+                'generated_at': datetime.now().isoformat(),
+                'version': 'era5-v1.0'
             }
             
-            logger.info(f"✅ Datos generados exitosamente:")
-            logger.info(f"   - wind_speed_10m: {len(wind_speed_10m)} valores")
-            logger.info(f"   - wind_speed_100m: {len(wind_speed_100m)} valores")
-            logger.info(f"   - surface_pressure: {len(surface_pressure)} valores")
-            logger.info(f"   - temperature_2m: {len(temperature_2m)} valores")
-            
-            return compatible_data
-            
-        except Exception as e:
-            logger.error(f"❌ Error generando datos compatibles: {e}")
-            raise
+            # Limpiar el archivo temporal
+            os.remove(dataset_path)
+            logger.info("Datos reales procesados y listos para el frontend.")
+            return data_for_frontend
 
-@era5_bp.route('/wind-data', methods=['POST'])
-def get_wind_data():
-    """
-    Endpoint principal para obtener datos de viento
-    Versión 3.0 - Compatible con frontend (resuelve error .flat())
-    """
-    try:
-        logger.info("🚀 === INICIO SOLICITUD WIND-DATA v3.0 ===")
+        except Exception as e:
+            logger.error(f"Fallo la descarga o procesamiento de datos reales: {e}")
+            # Si falla la obtención de datos reales, se retornan datos simulados
+            # Esto cumple con el requisito 3.
+            logger.info("Retornando datos simulados debido a un error con los datos reales.")
+            return self.generate_simulated_data_for_frontend(lat_min, lat_max, lon_min, lon_max, start_date, end_date)
+
+    def generate_simulated_data_for_frontend(self, lat_min, lat_max, lon_min, lon_max, start_date, end_date):
+        """
+        Genera datos simulados en el formato que espera el frontend.
+        Esta función se basa en la estructura de `generate_frontend_compatible_data` original,
+        pero adaptada para ser llamada cuando los datos reales no están disponibles.
+        """
+        logger.info("🔄 Generando datos simulados compatibles con frontend")
+        start = datetime.strptime(start_date, '%Y-%m-%d')
+        end = datetime.strptime(end_date, '%Y-%m-%d')
+        days_count = (end - start).days + 1
         
-        # Obtener y validar datos JSON
+        # Puntos espaciales simulados (menos denso que los reales para simulación rápida)
+        num_lat_points = 5 
+        num_lon_points = 5
+        spatial_points = num_lat_points * num_lon_points
+
+        # Puntos temporales (cada 6 horas como ERA5)
+        temporal_points = days_count * 4  # 4 mediciones por día
+        total_points = spatial_points * temporal_points
+
+        timestamps = []
+        current_dt = start
+        for _ in range(days_count):
+            for hour in [0, 6, 12, 18]:
+                timestamps.append((current_dt + timedelta(hours=hour)).isoformat())
+            current_dt += timedelta(days=1)
+        
+        # Replicar timestamps para cada punto espacial si el frontend espera un array plano por variable
+        # Si el frontend procesa lat/lon/time, la estructura de datos debe ser diferente.
+        # Asumiendo que el frontend espera un array plano por variable, como en el código original.
+        flat_total_points = len(timestamps) * spatial_points
+        
+        logger.info(f"📊 Generando {flat_total_points} puntos simulados ({spatial_points} espaciales × {len(timestamps)} temporales)")
+
+        # Generar datos simulados realistas del Caribe
+        wind_speed_10m = []
+        wind_speed_100m = []
+        surface_pressure = []
+        temperature_2m = []
+        # Las componentes u/v no se solicitan explícitamente para simulación, pero se podrían añadir
+        # u_component_10m = []
+        # v_component_10m = []
+        # u_component_100m = []
+        # v_component_100m = []
+
+        base_wind_10 = 6.5
+        base_wind_100 = 8.2
+        base_pressure = 1013
+        base_temp = 28
+
+        for i in range(flat_total_points):
+            time_factor = 0.8 + 0.4 * np.sin(2 * np.pi * ((i // spatial_points) % 4) / 4) # Ciclo diario simulado
+            random_factor = 0.7 + 0.6 * random.random()
+            seasonal_factor = 0.9 + 0.2 * np.sin(2 * np.pi * ((i // spatial_points) % (365*4)) / (365*4)) # Ciclo anual simulado
+
+            wind_10 = base_wind_10 * time_factor * random_factor * seasonal_factor
+            wind_speed_10m.append(round(max(1.0, min(12.0, wind_10)), 2))
+
+            wind_100 = wind_10 * 1.27
+            wind_speed_100m.append(round(max(1.5, min(15.0, wind_100)), 2))
+
+            pressure_var = 5 * np.sin(2 * np.pi * ((i // spatial_points) % 4) / 4) + 3 * (random.random() - 0.5)
+            pressure = base_pressure + pressure_var
+            surface_pressure.append(round(max(1000, min(1025, pressure)), 1))
+
+            temp_var = 4 * np.sin(2 * np.pi * ((i // spatial_points) % 4) / 4 - np.pi/4) + 2 * (random.random() - 0.5)
+            temp = base_temp + temp_var * seasonal_factor
+            temperature_2m.append(round(max(20, min(35, temp)), 1))
+        
+        # Replicar timestamps para que coincida con la longitud de los datos aplanados
+        replicated_timestamps = []
+        for ts in timestamps:
+            replicated_timestamps.extend([ts] * spatial_points)
+
+        simulated_data = {
+            'wind_speed_10m': wind_speed_10m,
+            'wind_speed_100m': wind_speed_100m,
+            'surface_pressure': surface_pressure,
+            'temperature_2m': temperature_2m,
+            # 'u10': u_component_10m, # Añadir si es necesario
+            # 'v10': v_component_10m,
+            # 'u100': u_component_100m,
+            # 'v100': v_component_100m,
+            'timestamps': replicated_timestamps, 
+            'metadata': {
+                'total_points': flat_total_points,
+                'spatial_resolution': f'{spatial_points} puntos simulados',
+                'temporal_resolution': f'{len(timestamps)} timesteps simulados',
+                'area': f'lat:[{lat_min},{lat_max}] lon:[{lon_min},{lon_max}]',
+                'period': f'{start_date} to {end_date}',
+                'test_mode': True, # Indicar que son datos simulados
+                'region': 'Caribe Colombiano (Simulado)',
+                'generated_at': datetime.now().isoformat(),
+                'version': 'simulated-v1.0'
+            }
+        }
+        logger.info("Datos simulados generados.")
+        return simulated_data
+
+@era5_bp.route("/data", methods=["POST"])
+def get_era5_data():
+    service = ERA5Service()
+    try:
         data = request.get_json()
         if not data:
-            logger.warning("❌ No se recibieron datos JSON")
-            return jsonify({
-                'error': 'No se recibieron datos JSON',
-                'details': 'La solicitud debe incluir parámetros en formato JSON',
-                'expected_format': {
-                    'lat_min': 'float',
-                    'lat_max': 'float', 
-                    'lon_min': 'float',
-                    'lon_max': 'float',
-                    'start_date': 'YYYY-MM-DD',
-                    'end_date': 'YYYY-MM-DD'
-                }
-            }), 400
-        
-        # Validar parámetros
-        try:
-            lat_min, lat_max, lon_min, lon_max, start_date, end_date = ERA5Service().validate_parameters(data)
-            logger.info(f"📍 Parámetros validados: lat=[{lat_min:.2f},{lat_max:.2f}] lon=[{lon_min:.2f},{lon_max:.2f}] fechas=[{start_date},{end_date}]")
-        except ValueError as e:
-            logger.warning(f"❌ Parámetros inválidos: {e}")
-            return jsonify({
-                'error': 'Parámetros inválidos',
-                'details': str(e),
-                'received_data': data
-            }), 400
-        
-        # Generar datos compatibles con frontend
-        era5_service = ERA5Service()
-        
-        try:
-            era5_data = era5_service.generate_frontend_compatible_data(
-                lat_min, lat_max, lon_min, lon_max, start_date, end_date
-            )
-        except Exception as e:
-            logger.error(f"❌ Error generando datos: {e}")
-            return jsonify({
-                'error': 'Error generando datos de prueba',
-                'details': str(e),
-                'suggestion': 'Intente con un área o rango de fechas más pequeño'
-            }), 500
-        
-        # Respuesta en formato EXACTO que espera el frontend
-        response = {
-            'status': 'success',
-            'data': era5_data,  # Datos directos como arrays
-            'message': 'Datos de prueba generados exitosamente (modo compatible)'
-        }
-        
-        logger.info("🎉 === RESPUESTA EXITOSA ===")
-        logger.info(f"✅ Enviando arrays directos:")
-        logger.info(f"   - wind_speed_10m: {len(era5_data['wind_speed_10m'])} elementos")
-        logger.info(f"   - wind_speed_100m: {len(era5_data['wind_speed_100m'])} elementos")
-        logger.info(f"   - surface_pressure: {len(era5_data['surface_pressure'])} elementos")
-        logger.info(f"   - temperature_2m: {len(era5_data['temperature_2m'])} elementos")
-        logger.info("🔧 Frontend podrá usar .flat() sin errores")
-        
-        return jsonify(response)
-        
-    except Exception as e:
-        logger.error(f"💥 Error inesperado en wind-data: {e}")
-        return jsonify({
-            'error': 'Error interno del servidor',
-            'details': f'Error procesando solicitud: {str(e)}',
-            'technical_error': type(e).__name__,
-            'timestamp': datetime.now().isoformat()
-        }), 500
+            return jsonify({"error": "No se proporcionaron datos en la solicitud"}), 400
 
-@era5_bp.route("/wind-average-10m", methods=["GET"])
-def get_heatmap():
-    try:
-        service = ERA5Service()
-        data = service.get_real_wind_data()
-        return jsonify({
-            "data": data,
-            "metadata": {
-                "description": "Heatmap viento promedio 10m",
-                "units": "m/s",
-                "total_points": len(data),
-                "data_source": "simulated" if service.test_mode else "era5_real",
-                "version": "4.0"
-            }
-        })
-    except Exception as e:
-        logger.error(f"Error en heatmap: {e}")
-        return jsonify({"error": "Error generando heatmap", "details": str(e)}), 500
+        logger.info(f"Solicitud recibida: {data}")
+        lat_min, lat_max, lon_min, lon_max, start_date, end_date = service.validate_parameters(data)
+        
+        # Intenta obtener datos reales. Si falla, la función get_real_wind_data 
+        # internamente llamará a generate_simulated_data_for_frontend.
+        # Esto cumple con el requisito 3.
+        if service.test_mode:
+            logger.info("Modo de prueba activado: Usando datos simulados.")
+            era5_data = service.generate_simulated_data_for_frontend(lat_min, lat_max, lon_min, lon_max, start_date, end_date)
+        else:
+            logger.info("Intentando obtener datos reales de ERA5.")
+            era5_data = service.get_real_wind_data(lat_min, lat_max, lon_min, lon_max, start_date, end_date)
 
-@era5_bp.route('/health', methods=['GET'])
-def health_check():
-    """
-    Endpoint de verificación de salud del servicio
-    """
-    return jsonify({
-        'status': 'healthy',
-        'service': 'ERA5 Wind Analysis',
-        'version': '3.0-compatible',
-        'mode': 'test_mode_compatible',
-        'frontend_compatibility': 'FIXED',
-        'flat_error_resolved': True,
-        'timestamp': datetime.now().isoformat(),
-        'endpoints': {
-            'wind-data': 'POST /api/wind-data',
-            'health': 'GET /api/health',
-            'debug': 'POST /api/debug'
-        }
-    })
+        if not era5_data:
+             # Esto no debería ocurrir si generate_simulated_data_for_frontend siempre devuelve algo
+            logger.error("No se pudieron obtener datos reales ni simulados.")
+            return jsonify({"error": "No se pudieron obtener datos"}), 500
 
-@era5_bp.route('/debug', methods=['POST'])
-def debug_info():
-    """
-    Endpoint de debugging para diagnosticar problemas
-    """
-    try:
-        data = request.get_json() or {}
-        
-        debug_info = {
-            'service_info': {
-                'version': '3.0-compatible',
-                'status': 'operational',
-                'frontend_compatibility': 'FIXED',
-                'flat_error_resolved': True
-            },
-            'received_data': data,
-            'environment': {
-                'CDSAPI_URL': os.getenv('CDSAPI_URL', 'Not set'),
-                'CDSAPI_KEY': 'Set' if os.getenv('CDSAPI_KEY') else 'Not set',
-                'test_mode': True
-            },
-            'timestamp': datetime.now().isoformat()
-        }
-        
-        # Si se proporcionan fechas, simular generación
-        if 'start_date' in data and 'end_date' in data:
-            try:
-                era5_service = ERA5Service()
-                lat_min = data.get('lat_min', 10.0)
-                lat_max = data.get('lat_max', 11.0) 
-                lon_min = data.get('lon_min', -75.0)
-                lon_max = data.get('lon_max', -74.0)
-                
-                test_data = era5_service.generate_frontend_compatible_data(
-                    lat_min, lat_max, lon_min, lon_max,
-                    data['start_date'], data['end_date']
-                )
-                
-                debug_info['test_generation'] = {
-                    'success': True,
-                    'data_structure': {
-                        'wind_speed_10m': f"Array with {len(test_data['wind_speed_10m'])} elements",
-                        'wind_speed_100m': f"Array with {len(test_data['wind_speed_100m'])} elements",
-                        'surface_pressure': f"Array with {len(test_data['surface_pressure'])} elements",
-                        'temperature_2m': f"Array with {len(test_data['temperature_2m'])} elements"
-                    },
-                    'frontend_compatibility': 'CONFIRMED',
-                    'sample_values': {
-                        'wind_speed_10m_first': test_data['wind_speed_10m'][0],
-                        'wind_speed_10m_last': test_data['wind_speed_10m'][-1]
-                    }
-                }
-                
-            except Exception as e:
-                debug_info['test_generation'] = {
-                    'success': False,
-                    'error': str(e)
-                }
-        
-        return jsonify(debug_info)
-        
+        # Asegurar que todas las variables solicitadas estén presentes, incluso si están vacías
+        # El frontend podría esperar estas claves.
+        expected_keys = ['wind_speed_10m', 'wind_speed_100m', 'surface_pressure', 'temperature_2m', 'timestamps', 'metadata']
+        for key in expected_keys:
+            if key not in era5_data:
+                era5_data[key] = [] if key != 'metadata' else {}
+                logger.warning(f"Clave '{key}' no encontrada en era5_data, inicializada como vacía.")
+
+        logger.info(f"Enviando {len(era5_data.get('timestamps',[]))} timestamps al frontend.")
+        return jsonify(era5_data)
+
+    except ValueError as ve:
+        logger.error(f"Error de validación: {ve}")
+        return jsonify({"error": str(ve)}), 400
     except Exception as e:
-        logger.error(f"Error en debug: {e}")
-        return jsonify({
-            'error': 'Error en endpoint de debug',
-            'details': str(e),
-            'timestamp': datetime.now().isoformat()
-        }), 500
-# Endpoint adicional para verificar formato específico
-@era5_bp.route('/test-format', methods=['GET'])
-def test_format():
-    """
-    Endpoint para verificar que el formato es compatible con frontend
-    """
+        logger.exception(f"Error inesperado en el servidor: {e}") # Usar logger.exception para incluir traceback
+        return jsonify({"error": "Error interno del servidor"}), 500
+
+# Este endpoint es el que existía originalmente para datos simulados.
+# Se puede mantener si se desea tener un endpoint específico para simulación,
+# o eliminar si la lógica de fallback en /data es suficiente.
+@era5_bp.route("/simulated_data", methods=["POST"])
+def get_simulated_data_endpoint():
+    service = ERA5Service()
     try:
-        # Generar datos de prueba pequeños
-        era5_service = ERA5Service()
-        test_data = era5_service.generate_frontend_compatible_data(
-            10.0, 10.5, -75.0, -74.5, '2024-01-01', '2024-01-01'
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No se proporcionaron datos en la solicitud"}), 400
+        
+        logger.info(f"Solicitud de datos simulados recibida: {data}")
+        lat_min, lat_max, lon_min, lon_max, start_date, end_date = service.validate_parameters(data)
+        
+        simulated_data = service.generate_simulated_data_for_frontend(
+            lat_min, lat_max, lon_min, lon_max, start_date, end_date
         )
-        
-        # Verificar que el formato es correcto
-        format_check = {
-            'wind_speed_10m_is_array': isinstance(test_data['wind_speed_10m'], list),
-            'wind_speed_10m_length': len(test_data['wind_speed_10m']),
-            'wind_speed_10m_sample': test_data['wind_speed_10m'][:3],
-            'flat_would_work': True,  # Porque ya es un array plano
-            'frontend_compatible': True,
-            'error_resolved': 'Cannot read properties of undefined (reading flat) - FIXED'
-        }
-        
-        return jsonify({
-            'status': 'success',
-            'format_verification': format_check,
-            'message': 'Formato compatible con frontend confirmado'
-        })
-        
+        return jsonify(simulated_data)
+
+    except ValueError as ve:
+        logger.error(f"Error de validación en datos simulados: {ve}")
+        return jsonify({"error": str(ve)}), 400
     except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'error': str(e)
-        }), 500
+        logger.exception(f"Error inesperado en el endpoint de datos simulados: {e}")
+        return jsonify({"error": "Error interno del servidor al generar datos simulados"}), 500
