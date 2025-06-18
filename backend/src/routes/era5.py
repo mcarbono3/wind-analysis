@@ -169,10 +169,8 @@ class ERA5Service:
                 'version': 'era5-v1.0'
             }
             # Limpiar el archivo temporal
-            os.remove(dataset_path)  
-                       
-        logger.warning(f"No se pudo eliminar el archivo temporal: {e}")
-
+            os.remove(dataset_path)                         
+        
         except Exception as e:
             logger.error(f"Fallo la descarga o procesamiento de datos reales: {e}")
             # Si falla la obtención de datos reales, se retornan datos simulados
