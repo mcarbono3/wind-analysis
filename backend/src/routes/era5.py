@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 import logging
 import os
 from datetime import datetime, timedelta
+from services.cds_config_manager import CDSConfigManager
 import numpy as np
 import random
 import cdsapi
@@ -18,7 +19,10 @@ era5_bp = Blueprint("era5", __name__)
 class ERA5Service:
     def __init__(self):
         self.test_mode = os.environ.get("TEST_MODE", "False").lower() == "true"
-        logger.info(f"ERA5Service inicializado (test_mode={self.test_mode})")
+        self.config = CDSConfigManager()
+        self.credentials_method = self.config.config_method
+        self.cds_url, self.cds_key = self.config.get_credentials()
+        logger.info(f"ERA5Service inicializado con método de credenciales: {self.credentials_method}")
         
         # Configurar credenciales de CDS
         self._setup_cds_credentials()
