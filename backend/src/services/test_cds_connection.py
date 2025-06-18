@@ -13,7 +13,7 @@ import tempfile
 
 # Importar el gestor de configuración personalizado
 try:
-    from cds_config_manager import CDSConfigManager
+    from services.cds_config_manager import CDSConfigManager
 except ImportError:
     print("❌ Error: No se pudo importar cds_config_manager.py")
     print("   Asegúrese de que el archivo esté en el mismo directorio.")
