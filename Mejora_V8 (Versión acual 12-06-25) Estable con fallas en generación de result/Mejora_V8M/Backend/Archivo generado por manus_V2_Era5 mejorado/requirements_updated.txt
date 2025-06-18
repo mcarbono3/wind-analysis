@@ -1,0 +1,11 @@
+# requirements.txt actualizado para el backend
+flask
+flask-cors
+cdsapi>=0.6.1
+xarray>=2023.1.0
+netcdf4>=1.6.0
+numpy
+pandas
+requests
+python-dotenv
+
