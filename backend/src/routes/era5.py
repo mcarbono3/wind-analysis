@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 import logging
 import os
 from datetime import datetime, timedelta
-from services.cds_config_manager import CDSConfigManager
+from src.services.cds_config_manager import CDSConfigManager
 import numpy as np
 import random
 import cdsapi
