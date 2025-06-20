@@ -26,7 +26,7 @@ class CDSConfigManager:
         """
         self.user_id = user_id or "45cfdc65-53d4-4a5e-91ed-37d24caf9c41"
         self.api_token = api_token or "c7cb9197-fc32-4420-8906-70a1d2e5219d"
-        self.cds_url = "https://cds.climate.copernicus.eu/api/v2"
+        self.cds_url = "https://cds.climate.copernicus.eu/api"  # URL corregida
         
         self.config_method = None
         self.config_path = None
