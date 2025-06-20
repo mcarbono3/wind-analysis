@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import requests
-from services.nasa_config_manager import NASAConfigManager
+from src.services.nasa_config_manager import NASAConfigManager
 
 # Configuración del logger
 logging.basicConfig(level=logging.INFO)
