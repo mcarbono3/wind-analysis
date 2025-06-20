@@ -14,6 +14,9 @@ import xarray as xr
 import requests
 from src.services.nasa_config_manager import NASAConfigManager
 
+# Fecha mínima disponible en MERRA-2
+MIN_MERRA2_DATE = datetime(1980, 1, 1).date()
+
 # Configuración del logger
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -327,9 +330,29 @@ class MERRA2Service:
             logger.info(f"Iniciando descarga MERRA-2 para área: lat=[{lat_min},{lat_max}], lon=[{lon_min},{lon_max}]")
             logger.info(f"Período: {start_date} a {end_date}")
             
-            # Generar lista de fechas
-            start_dt = datetime.strptime(start_date, '%Y-%m-%d')
-            end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+            # 🔐 Validación y ajuste automático de fechas
+            today = datetime.utcnow().date()
+            max_valid_date = today - timedelta(days=3)  # NASA puede tener 1–3 días de retraso
+
+            start_dt = datetime.strptime(start_date, '%Y-%m-%d').date()
+            end_dt = datetime.strptime(end_date, '%Y-%m-%d').date()
+
+            if end_dt > max_valid_date:
+                logger.warning(f"⚠️ Fecha final ajustada de {end_dt} a {max_valid_date} por disponibilidad de MERRA-2")
+                end_dt = max_valid_date
+
+            if start_dt > end_dt:
+                logger.warning(f"⚠️ Fecha de inicio {start_dt} mayor que fecha final ajustada {end_dt}. Corrigiendo...")
+                start_dt = end_dt - timedelta(days=7)  # rango seguro
+                if start_dt < datetime(1980, 1, 1).date():
+                    start_dt = datetime(1980, 1, 1).date()
+                    
+            # Reconvertir a string para flujo normal
+            start_date = start_dt.strftime('%Y-%m-%d')
+            end_date = end_dt.strftime('%Y-%m-%d')
+            logger.info(f"📅 Fechas corregidas: {start_date} a {end_date}")
+
+            # Generar lista de fechas corregida
             dates = [start_dt + timedelta(days=x) for x in range((end_dt - start_dt).days + 1)]
             
             datasets = []
