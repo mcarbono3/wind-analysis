@@ -10,7 +10,7 @@ import xarray as xr
 import tempfile
 
 # Importar servicio MERRA-2
-from services.merra2_service import MERRA2Service
+from src.services.merra2_service import MERRA2Service
 
 # Configuración del logger
 logging.basicConfig(level=logging.INFO)
