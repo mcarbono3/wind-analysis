@@ -9,6 +9,9 @@ import cdsapi
 import xarray as xr
 import tempfile
 
+# Importar servicio MERRA-2
+from services.merra2_service import MERRA2Service
+
 # Configuración del logger
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -178,8 +181,8 @@ class ERA5Service:
 
         except Exception as e:
             logger.error(f"Fallo descarga/procesamiento datos reales: {e}")
-            logger.info("Retornando datos simulados por error con los datos reales.")
-            return self.generate_simulated_data_for_frontend(lat_min, lat_max, lon_min, lon_max, start_date, end_date)
+            # No generar datos simulados aquí, lanzar excepción para activar fallback
+            raise Exception(f"ERA5 falló: {e}")
 
     def generate_simulated_data_for_frontend(self, lat_min, lat_max, lon_min, lon_max, start_date, end_date):
         logger.info("🔄 Generando datos simulados compatibles con frontend")
@@ -293,7 +296,7 @@ class ERA5Service:
 @era5_bp.route('/wind-data', methods=['POST'])
 def get_wind_data():
     try:
-        logger.info("🚀 === INICIO SOLICITUD /wind-data v3.1 ===")
+        logger.info("🚀 === INICIO SOLICITUD /wind-data v5.0 (Fallback: ERA5 -> MERRA-2 -> Simulado) ===")
         data = request.get_json()
         if not data:
             logger.warning("❌ No se recibieron datos JSON")
@@ -312,8 +315,9 @@ def get_wind_data():
             }), 400
 
         try:
-            service = ERA5Service()
-            lat_min, lat_max, lon_min, lon_max, start_date, end_date = service.validate_parameters(data)
+            # Validar parámetros usando ERA5Service (validación común)
+            era5_service = ERA5Service()
+            lat_min, lat_max, lon_min, lon_max, start_date, end_date = era5_service.validate_parameters(data)
             logger.info(f"📍 Parámetros validados: lat=[{lat_min:.2f},{lat_max:.2f}], lon=[{lon_min:.2f},{lon_max:.2f}], fechas=[{start_date} a {end_date}]")
         except ValueError as ve:
             logger.warning(f"❌ Error en validación de parámetros: {ve}")
@@ -324,31 +328,110 @@ def get_wind_data():
                 'received_data': data
             }), 400
 
-        try:
-            era5_data = service.generate_frontend_compatible_data(
-                lat_min, lat_max, lon_min, lon_max, start_date, end_date
-            )
-        except Exception as e:
-            logger.error(f"❌ Error generando datos compatibles: {e}")
-            return jsonify({
-                'status': 'error',
-                'error': 'Error generando datos',
-                'details': str(e),
-                'suggestion': 'Verifique el área o rango de fechas (máximo 31 días)'
-            }), 500
+        # Implementar lógica de fallback: ERA5 -> MERRA-2 -> Simulado
+        wind_data = None
+        data_source_used = None
+        fallback_reason = None
 
+        # PASO 1: Intentar ERA5
+        logger.info("🌍 PASO 1: Intentando obtener datos de ERA5...")
+        try:
+            # Forzar modo real para ERA5 (desactivar TEST_MODE temporalmente)
+            original_test_mode = os.environ.get("TEST_MODE", "False")
+            os.environ["TEST_MODE"] = "False"
+            
+            era5_service_real = ERA5Service()
+            wind_data = era5_service_real.get_real_wind_data(lat_min, lat_max, lon_min, lon_max, start_date, end_date)
+            
+            # Restaurar TEST_MODE original
+            os.environ["TEST_MODE"] = original_test_mode
+            
+            if wind_data and len(wind_data.get('wind_speed_10m', [])) > 0:
+                data_source_used = 'era5'
+                logger.info("✅ ERA5: Datos obtenidos exitosamente")
+            else:
+                raise ValueError("ERA5 devolvió datos vacíos")
+                
+        except Exception as e:
+            logger.warning(f"⚠️ ERA5 falló: {e}")
+            fallback_reason = f"ERA5 error: {str(e)}"
+            wind_data = None
+
+        # PASO 2: Si ERA5 falló, intentar MERRA-2
+        if wind_data is None:
+            logger.info("🛰️ PASO 2: Intentando obtener datos de MERRA-2...")
+            try:
+                # Forzar modo real para MERRA-2
+                original_test_mode = os.environ.get("TEST_MODE", "False")
+                os.environ["TEST_MODE"] = "False"
+                
+                merra2_service = MERRA2Service()
+                wind_data = merra2_service.get_merra2_data(lat_min, lat_max, lon_min, lon_max, start_date, end_date)
+                
+                # Restaurar TEST_MODE original
+                os.environ["TEST_MODE"] = original_test_mode
+                
+                if wind_data and len(wind_data.get('wind_speed_10m', [])) > 0:
+                    data_source_used = 'merra2'
+                    logger.info("✅ MERRA-2: Datos obtenidos exitosamente")
+                else:
+                    raise ValueError("MERRA-2 devolvió datos vacíos")
+                    
+            except Exception as e:
+                logger.warning(f"⚠️ MERRA-2 falló: {e}")
+                fallback_reason += f" | MERRA-2 error: {str(e)}"
+                wind_data = None
+
+        # PASO 3: Si ambos fallaron, generar datos simulados
+        if wind_data is None:
+            logger.info("🔄 PASO 3: Generando datos simulados (fallback final)...")
+            try:
+                # Usar datos simulados de ERA5 como fallback
+                wind_data = era5_service.generate_simulated_data_for_frontend(
+                    lat_min, lat_max, lon_min, lon_max, start_date, end_date
+                )
+                data_source_used = 'simulated'
+                logger.info("✅ Datos simulados generados exitosamente")
+                
+                # Actualizar metadatos para indicar que es fallback
+                wind_data['metadata']['fallback_reason'] = fallback_reason
+                wind_data['metadata']['region'] = 'Caribe Colombiano (Simulado - Fallback)'
+                
+            except Exception as e:
+                logger.error(f"❌ Error crítico generando datos simulados: {e}")
+                return jsonify({
+                    'status': 'error',
+                    'error': 'Error crítico del sistema',
+                    'details': 'No se pudieron obtener datos de ninguna fuente',
+                    'fallback_reason': fallback_reason,
+                    'final_error': str(e)
+                }), 500
+
+        # Preparar respuesta
         response = {
             'status': 'success',
-            'message': 'Datos generados exitosamente',
-            'data': era5_data
+            'message': f'Datos obtenidos exitosamente desde {data_source_used.upper()}',
+            'data_source': data_source_used,
+            'data': wind_data
         }
 
+        # Agregar información de fallback si aplica
+        if data_source_used != 'era5':
+            response['fallback_info'] = {
+                'attempted_sources': ['era5', 'merra2'] if data_source_used == 'simulated' else ['era5'],
+                'fallback_reason': fallback_reason,
+                'final_source': data_source_used
+            }
+
         logger.info("✅ Datos listos para el frontend:")
-        logger.info(f"   - wind_speed_10m: {len(era5_data.get('wind_speed_10m', []))} valores")
-        logger.info(f"   - wind_speed_100m: {len(era5_data.get('wind_speed_100m', []))} valores")
-        logger.info(f"   - surface_pressure: {len(era5_data.get('surface_pressure', []))} valores")
-        logger.info(f"   - temperature_2m: {len(era5_data.get('temperature_2m', []))} valores")
-        logger.info("🎯 Estructura compatible con el frontend (evita .flat() error)")
+        logger.info(f"   - Fuente final: {data_source_used.upper()}")
+        logger.info(f"   - wind_speed_10m: {len(wind_data.get('wind_speed_10m', []))} valores")
+        logger.info(f"   - wind_speed_100m: {len(wind_data.get('wind_speed_100m', []))} valores")
+        logger.info(f"   - surface_pressure: {len(wind_data.get('surface_pressure', []))} valores")
+        logger.info(f"   - temperature_2m: {len(wind_data.get('temperature_2m', []))} valores")
+        
+        if data_source_used != 'era5':
+            logger.info(f"   - Fallback aplicado: {fallback_reason}")
 
         return jsonify(response)
 
