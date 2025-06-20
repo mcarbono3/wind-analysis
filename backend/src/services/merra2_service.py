@@ -332,21 +332,24 @@ class MERRA2Service:
             
             # 🔐 Validación y ajuste automático de fechas
             today = datetime.utcnow().date()
-            max_valid_date = today - timedelta(days=3)  # NASA puede tener 1–3 días de retraso
+            approx_data_delay_days = 60  # ~2 meses de retraso en MERRA-2
+            max_valid_date = today - timedelta(days=approx_data_delay_days)
 
             start_dt = datetime.strptime(start_date, '%Y-%m-%d').date()
-            end_dt = datetime.strptime(end_date, '%Y-%m-%d').date()
+            end_dt = datetime.strptime(end_date, '%Y-%m-%d').date()    
 
             if end_dt > max_valid_date:
-                logger.warning(f"⚠️ Fecha final ajustada de {end_dt} a {max_valid_date} por disponibilidad de MERRA-2")
+                logger.warning(f"⚠️ Fecha inicial {start_dt} posterior a fecha final ajustada {end_dt}. Recalculando rango...")
                 end_dt = max_valid_date
 
             if start_dt > end_dt:
-                logger.warning(f"⚠️ Fecha de inicio {start_dt} mayor que fecha final ajustada {end_dt}. Corrigiendo...")
-                start_dt = end_dt - timedelta(days=7)  # rango seguro
-                if start_dt < datetime(1980, 1, 1).date():
-                    start_dt = datetime(1980, 1, 1).date()
-                    
+                logger.warning(f"⚠️ Fecha inicial {start_dt} posterior a fecha final ajustada {end_dt}. Recalculando rango...")
+                start_dt = end_dt - timedelta(days=7)
+
+            if start_dt < MIN_MERRA2_DATE:
+                 logger.warning(f"⚠️ Fecha inicial muy antigua. Ajustando a mínimo permitido {MIN_MERRA2_DATE}")
+                 start_dt = MIN_MERRA2_DATE
+                   
             # Reconvertir a string para flujo normal
             start_date = start_dt.strftime('%Y-%m-%d')
             end_date = end_dt.strftime('%Y-%m-%d')
