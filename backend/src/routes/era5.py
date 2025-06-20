@@ -242,15 +242,26 @@ class ERA5Service:
         for ts in timestamps:
             replicated_timestamps.extend([ts] * spatial_points)
         # 🧠 Análisis adicionales esperados por el frontend
+        assert len(replicated_timestamps) == len(wind_direction_10m) == len(wind_speed_10m), "❌ Error: listas desalineadas"
         sim_df = pd.DataFrame({
             "timestamp": pd.to_datetime(replicated_timestamps),
             "speed": wind_speed_10m,
             "direction": wind_direction_10m
             })
+        sim_df.dropna(subset=["timestamp", "speed", "direction"], inplace=True)
+        sim_df = sim_df[np.isfinite(sim_df["speed"]) & np.isfinite(sim_df["direction"])]
+        
         bins = np.arange(0, 361, 30)
         labels = [f"{i}-{i+30}" for i in bins[:-1]]
-        sim_df["dir_bin"] = pd.cut(sim_df["direction"], bins=bins, labels=labels, right=False)
-        wind_rose_data = sim_df.groupby("dir_bin")["speed"].count().reindex(labels, fill_value=0).to_dict()
+        sim_df["dir_bin"] = pd.cut(sim_df["direction"], bins=bins, labels=labels, right=False, include_lowest=True)
+        wind_rose_data = {
+            str(k): int(v)
+            for k, v in sim_df.groupby("dir_bin")["speed"]
+            .count()
+            .reindex(labels, fill_value=0)
+            .to_dict()
+            .items()
+            }
 
         sim_df["hour"] = sim_df["timestamp"].dt.hour
         hourly_patterns = sim_df.groupby("hour")["speed"].mean().round(2).to_dict()
@@ -258,6 +269,8 @@ class ERA5Service:
         sim_df["date"] = sim_df["timestamp"].dt.date
         daily_avg = sim_df.groupby("date")["speed"].mean().round(2)
         time_series = {date.isoformat(): val for date, val in daily_avg.items()}
+
+        assert all(isinstance(v, int) and not pd.isna(v) for v in wind_rose_data.values()), "❌ Error: valores inválidos en rosa de vientos"
 
         simulated_data = {
             'wind_speed_10m': wind_speed_10m,
