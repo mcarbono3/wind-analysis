@@ -32,7 +32,7 @@ class MERRA2Service:
         Inicializa el servicio MERRA-2.
         """
         self.test_mode = os.environ.get("TEST_MODE", "False").lower() == "true"
-        self.config_manager = NASAConfigManager()
+        self.config_manager = NASAConfigManager(username="windatacaribe", password="Alejandro1425.")
         logger.info(f"MERRA2Service inicializado (test_mode={self.test_mode})")
     
     def validate_parameters(self, data: Dict) -> Tuple[float, float, float, float, str, str]:
