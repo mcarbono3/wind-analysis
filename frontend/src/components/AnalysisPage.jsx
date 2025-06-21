@@ -31,36 +31,6 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
-// --- NUEVA FUNCIÓN DE TRANSFORMACIÓN DE DATOS ---
-const transformWindRoseData = (rawData, speedLabels) => {
-    if (!rawData || !Array.isArray(rawData) || !speedLabels || !Array.isArray(speedLabels)) {
-        console.warn("Datos de rosa de los vientos o etiquetas de velocidad inválidos para transformar.");
-        return [];
-    }
-    return rawData.map(entry => {
-        const transformedEntry = {
-            angle: entry.angle,
-            direction: entry.direction,
-            total_frequency: typeof entry.total_frequency === 'number' && !isNaN(entry.total_frequency) ? entry.total_frequency : 0
-        };
-        // Asegurarse de que frequencies es un array antes de iterar
-        if (Array.isArray(entry.frequencies)) {
-            entry.frequencies.forEach((freq, index) => {
-                const label = speedLabels[index];
-                // Validar cada frecuencia individualmente
-                transformedEntry[label] = typeof freq === 'number' && !isNaN(freq) ? freq : 0;
-            });
-        } else {
-            console.warn("Entry.frequencies no es un array:", entry);
-            // Opcional: inicializar todas las frecuencias a 0 si no hay array
-            speedLabels.forEach(label => transformedEntry[label] = 0);
-        }
-        return transformedEntry;
-    });
-};
-
-// --- ARREGLO DE COLORES PARA LAS BARRAS RADIALES ---
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#A100F2', '#FF4500', '#1E90FF']; // Puedes ajustar estos colores
 // Configuración de la API
 const API_BASE_URL = 'https://wind-analysis.onrender.com/api';
 
@@ -307,11 +277,74 @@ const prepareChartData = (analysis, era5Data, unit = 'kmh') => {
   );
 
   // Preparar datos de rosa de vientos para gráfico polar/radial
-// === Configuración de la Rosa de Vientos ===
-
-// Construcción segura del dataset para el gráfico
+const windRoseData = [];
+  const windRoseRaw = analysis.wind_rose_data || [];
+  
+  if (windRoseRaw.length > 0) {
+    // Convertir datos de rosa de vientos a formato polar
+    windRoseRaw.forEach((entry, index) => {
+      const direction = entry.direction || index * 22.5; // Asumiendo 16 direcciones
+      const totalFrequency = entry.frequencies ? entry.frequencies.reduce((sum, freq) => sum + freq, 0) : 0;
+      
+      windRoseData.push({
+        direction: direction,
+        angle: direction,
+        frequency: totalFrequency,
+        name: getDirectionName(direction),
+        fill: getWindRoseColor(totalFrequency)
+      });
+    });
+  } else {
+    // Datos de ejemplo si no hay datos reales
+    const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+    directions.forEach((dir, index) => {
+      windRoseData.push({
+        direction: index * 22.5,
+        angle: index * 22.5,
+        frequency: Math.random() * 15 + 5,
+        name: dir,
+        fill: getWindRoseColor(Math.random() * 15 + 5)
+      });
+    });
+  }
+  
+  // Preparar datos de patrones horarios
+  const hourlyData = [];
+  const hourlyPatterns = safeGet(analysis, 'hourly_patterns', {});
+  if (hourlyPatterns.mean_by_hour) {
+    Object.entries(hourlyPatterns.mean_by_hour).forEach(([hour, speed]) => {
+      hourlyData.push({
+        hour: parseInt(hour),
+        speed: convertWindSpeed(speed, unit)
+      });
+    });
+  }
+  
+  console.log('Prepared chart data:', { timeSeriesData, weibullData, windRoseData, hourlyData });
+  
+  return {
+    timeSeries: timeSeriesData,
+    weibullHistogram: weibullData,
+    windRose: windRoseData,
+    hourlyPatterns: hourlyData
+  };
+};
 
 // Función auxiliar para obtener nombre de dirección
+const getDirectionName = (angle) => {
+  const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+  const index = Math.round(angle / 22.5) % 16;
+  return directions[index];
+};
+
+// Función auxiliar para obtener color de rosa de vientos
+const getWindRoseColor = (frequency) => {
+  if (frequency < 5) return '#e0f2fe';
+  if (frequency < 10) return '#7dd3fc';
+  if (frequency < 15) return '#0ea5e9';
+  if (frequency < 20) return '#0284c7';
+  return '#0c4a6e';
+};
 
 // Componente para manejar la selección en el mapa
 function MapSelector({ onAreaSelect, selectedArea, isSelecting, setIsSelecting }) {
@@ -519,20 +552,6 @@ const AnalysisPage = ({ onBackToHome }) => {
       });
     }
   }, [analysisData]);
-
-  // --- NUEVA DECLARACIÓN DE DATOS TRANSFORMADOS PARA LA ROSA DE LOS VIENTOS ---
-  const windRoseTransformedData = useMemo(() => {
-    // Solo transforma si los datos y etiquetas necesarios existen
-    if (analysisData?.analysis?.wind_rose_data && analysisData?.analysis?.wind_rose_labels?.speed_labels) {
-      console.log("Transformando datos de rosa de los vientos para el gráfico...");
-      return transformWindRoseData(
-        analysisData.analysis.wind_rose_data,
-        analysisData.analysis.wind_rose_labels.speed_labels
-      );
-    }
-    console.log("Datos de rosa de los vientos incompletos o no disponibles para transformar. Retornando array vacío.");
-    return []; // Retorna un array vacío si los datos no están listos
-  }, [analysisData]); // Dependencia: recalcula cuando analysisData cambia
 
   // Coordenadas del Caribe colombiano
   const caribbeanBounds = {
@@ -1410,56 +1429,22 @@ if (Array.isArray(aiDiagnosis?.explanation?.key_factors)) {
                     </CardHeader>
                     <CardContent className="p-6">
                       <div className="h-80 flex items-center justify-center">
-                        {/* AHORA USAMOS windRoseTransformedData y verificamos las etiquetas de velocidad */}
-                        {windRoseTransformedData.length > 0 && analysisData?.analysis?.wind_rose_labels?.speed_labels ? (
+                        {chartData.windRose && chartData.windRose.length > 0 ? (
                           <ResponsiveContainer width="100%" height="100%">
-                            <RadialBarChart 
-                              cx="50%" 
-                              cy="50%" 
-                              innerRadius="10%" // Ajustado para un mejor aspecto de rosa de los vientos
-                              outerRadius="80%" 
-                              data={windRoseTransformedData} // <-- ¡Usamos los datos transformados aquí!
-                              startAngle={90} // Inicia en el Norte
-                              endAngle={-270} // Se mueve 360 grados en sentido horario
-                              barSize={10} // Ancho de las barras, ajusta si es necesario
-                            >
+                            <RadialBarChart cx="50%" cy="50%" innerRadius="20%" outerRadius="80%" data={chartData.windRose}>
                               <PolarGrid />
-                              <PolarAngleAxis
-                                dataKey="direction" // Usamos 'direction' como categoría
-                                type="category"     // ¡Especificamos que es de tipo categoría!
-                                angleAxisId={0}
-                                tickFormatter={(value, index) => analysisData.analysis.wind_rose_labels.direction_labels[index]} // Usa las etiquetas de dirección del backend
-                                tickLine={false} // No mostrar las líneas de los ticks
-                                axisLine={false} // No mostrar la línea del eje
-                              />
+                              <PolarAngleAxis dataKey="name" tick={{ fontSize: 12 }} />
                               <PolarRadiusAxis 
-                                angle={90} // El eje de radio apuntando hacia arriba (Norte)
-                                // Calcula el dominio máximo basado en la frecuencia total más alta
-                                domain={[0, Math.max(...windRoseTransformedData.map(d => d.total_frequency || 0)) * 1.2]} 
-                                tickFormatter={(value) => `${value.toFixed(0)}%`} // Formato de ticks del radio
-                                tickCount={5} // Número de ticks en el radio
+                                angle={90} 
+                                domain={[0, 'dataMax']} 
+                                tick={{ fontSize: 10 }}
+                                tickCount={4}
                               />
+                              <RadialBar dataKey="frequency" cornerRadius={2} fill="#0ea5e9" />
                               <Tooltip 
-                                // Ajusta el formatter para mostrar los valores correctos de cada segmento
-                                formatter={(value, name, props) => [`${value.toFixed(2)}%`, `Velocidad ${name}`]}
+                                formatter={(value, name) => [`${value.toFixed(1)}%`, 'Frecuencia']}
                                 labelFormatter={(label) => `Dirección: ${label}`}
                               />
-                              {/* --- NUEVO: Iterar sobre speed_labels para crear múltiples RadialBar apiladas --- */}
-                              {analysisData.analysis.wind_rose_labels.speed_labels.map((label, index) => (
-                                <RadialBar
-                                  key={`speed-bar-${label}`} // Clave única para cada RadialBar
-                                  minPointSize={1} // Asegura que las barras muy pequeñas sean visibles
-                                  dataKey={label} // ¡La clave de datos ahora apunta a la propiedad dinámica (ej. "0-3")!
-                                  fill={COLORS[index % COLORS.length]} // Usa el arreglo de colores
-                                  stackId="a" // ¡Todas las barras deben tener el mismo stackId para apilarse!
-                                  animationBegin={index * 100} // Animación escalonada (opcional)
-                                  isAnimationActive={true} // Asegura que las animaciones estén activas
-                                />
-                              ))}
-                              {/* Texto central opcional para indicar qué representa el eje de radio */}
-                               <text x="50%" y="50%" dominantBaseline="middle" textAnchor="middle" fill="#333" fontSize="14px">
-                                 Frecuencia %
-                               </text>
                             </RadialBarChart>
                           </ResponsiveContainer>
                         ) : (
