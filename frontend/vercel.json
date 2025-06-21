@@ -1,5 +1,4 @@
 {
-  "rootDirectory": "frontend",
   "buildCommand": "pnpm run build",
   "outputDirectory": "dist"
 }
